@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FPGA × 金融科技 · 应用与前沿 · 内部汇报</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07090c;
+  --surface: #12161c;
+  --hairline: #1e242e;
+  --gold: #d4a853;
+  --gold-dim: #a17e32;
+  --ice: #6ec8b8;
+  --coral: #e07a5f;
+  --lilac: #b8a4e8;
+  --text: #ece8e0;
+  --muted: #8a9088;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --max: 1120px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 16.5px;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(30,36,46,0.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30,36,46,0.45) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 78%);
+  opacity: 0.45;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a { color: var(--gold); text-decoration: none; border-bottom: 1px solid rgba(212,168,83,0.35); }
+a:hover { border-bottom-color: var(--gold); }
+.wrap {
+  position: relative;
+  z-index: 2;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* NAV */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(7,9,12,0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--hairline);
+}
+.nav-inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  gap: 24px;
+}
+.nav-mark {
+  font-family: var(--serif);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.nav-mark span { color: var(--muted); letter-spacing: 0.12em; font-family: var(--sans); font-size: 11px; margin-left: 10px; }
+.nav-links {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-links::-webkit-scrollbar { display: none; }
+.nav-links a {
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+.nav-links a:hover { color: var(--text); }
+
+/* HERO */
+.hero {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  padding: 72px 0 48px;
+  border-bottom: 1px solid var(--hairline);
+  align-items: end;
+}
+.kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin: 0 0 18px;
+}
+h1 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(40px, 5.4vw, 68px);
+  line-height: 1.12;
+  letter-spacing: 0.02em;
+  margin: 0 0 18px;
+}
+.subtitle {
+  font-size: 18px;
+  color: var(--muted);
+  margin: 0 0 22px;
+  font-weight: 300;
+}
+.date-line {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+}
+.hero-right {
+  text-align: right;
+  padding-bottom: 6px;
+}
+.giant {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: clamp(72px, 11vw, 128px);
+  line-height: 0.85;
+  color: var(--gold);
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+.giant sup {
+  font-size: 0.28em;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  top: -1.6em;
+  margin-left: 6px;
+}
+.giant-cap {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--ice);
+  font-family: var(--mono);
+}
+.caveat {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  max-width: 34em;
+  margin-left: auto;
+}
+
+/* LEGEND */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 22px 0 8px;
+  align-items: center;
+}
+.legend-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 1px 7px 2px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  line-height: 1.5;
+  vertical-align: 2px;
+  margin: 0 4px 0 2px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill-stac { color: var(--ice); }
+.pill-vendor { color: var(--coral); }
+.pill-paper { color: var(--lilac); }
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* INSIGHTS */
+.insights {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  margin: 36px 0 8px;
+  border-top: 1px solid var(--gold);
+  border-bottom: 1px solid var(--hairline);
+}
+.insight {
+  padding: 28px 28px 28px 0;
+  border-right: 1px solid var(--hairline);
+}
+.insight:first-child { padding-left: 0; }
+.insight:last-child { border-right: none; padding-right: 0; padding-left: 28px; }
+.insight:nth-child(2) { padding-left: 28px; }
+.insight-idx {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 0.22em;
+  margin-bottom: 10px;
+}
+.insight h3 {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  line-height: 1.3;
+}
+.insight p { margin: 0; font-size: 14.5px; color: var(--muted); line-height: 1.7; }
+
+/* SECTIONS */
+section { padding: 64px 0 8px; }
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.sec-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+}
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(28px, 3.2vw, 36px);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+.rule {
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent 72%);
+  margin: 14px 0 28px;
+  border: 0;
+}
+.lede {
+  font-size: 17px;
+  color: var(--text);
+  max-width: 40em;
+  margin: 0 0 28px;
+}
+.muted { color: var(--muted); }
+p { margin: 0 0 14px; }
+
+/* PIPELINE */
+.pipe {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  align-items: stretch;
+  gap: 0;
+  margin: 8px 0 18px;
+}
+.pipe-stage {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  padding: 22px 18px 20px;
+  min-height: 148px;
+}
+.pipe-idx {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.pipe-stage strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.pipe-stage p { margin: 0; font-size: 13.5px; color: var(--muted); }
+.pipe-join {
+  width: 28px;
+  position: relative;
+}
+.pipe-join::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
+  height: 1px;
+  background: var(--gold);
+}
+.pipe-join::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  top: calc(50% - 3px);
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid var(--gold);
+  border-top: 1px solid var(--gold);
+  transform: rotate(45deg);
+}
+.pipe-off {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.pipe-off span {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  border: 1px dashed var(--hairline);
+  padding: 8px 14px;
+}
+
+/* SCENE */
+.scene {
+  padding: 36px 0 8px;
+  border-top: 1px solid var(--hairline);
+}
+.scene:first-of-type { border-top: none; }
+.scene-head {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: baseline;
+}
+.scene-n {
+  font-family: var(--serif);
+  font-size: 28px;
+  color: var(--gold-dim);
+  font-weight: 400;
+}
+.scene h3 {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  margin: 18px 0 20px;
+}
+.metrics.two { grid-template-columns: 1fr 1fr; }
+.metrics.four { grid-template-columns: repeat(4, 1fr); }
+.m {
+  background: var(--surface);
+  padding: 20px 18px 18px;
+}
+.m .n {
+  font-family: var(--mono);
+  font-size: clamp(28px, 3.4vw, 40px);
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin: 8px 0 10px;
+}
+.m .n.ice { color: var(--ice); }
+.m .n.coral { color: var(--coral); }
+.m .n.lilac { color: var(--lilac); }
+.m .u {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+.m .l {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.row-metric {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hairline);
+  align-items: baseline;
+}
+.row-metric:last-child { border-bottom: none; }
+.row-metric .n {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--gold);
+  letter-spacing: -0.02em;
+}
+.row-metric .n.ice { color: var(--ice); }
+.row-metric .n.coral { color: var(--coral); }
+
+/* COMPARE */
+.compare {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--gold);
+}
+.col {
+  padding: 28px 22px 8px 0;
+  border-right: 1px solid var(--hairline);
+}
+.col:last-child { border-right: none; padding-right: 0; padding-left: 22px; }
+.col:nth-child(2), .col:nth-child(3) { padding-left: 22px; }
+.col.lead { }
+.col h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+  margin: 0 0 12px;
+}
+.col p { font-size: 14.5px; color: var(--muted); }
+.gtf-note {
+  margin-top: 28px;
+  padding: 18px 20px;
+  border-left: 1px solid var(--gold);
+  background: var(--surface);
+  font-size: 14.5px;
+  color: var(--muted);
+}
+.gtf-note strong { color: var(--text); font-weight: 500; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; margin: 8px 0 20px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+thead th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  padding: 0 16px 12px 0;
+  border-bottom: 1px solid var(--gold);
+}
+td {
+  padding: 16px 18px 16px 0;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+  color: var(--muted);
+}
+td:first-child {
+  font-family: var(--serif);
+  color: var(--text);
+  font-size: 16px;
+  width: 22%;
+}
+td:nth-child(2) {
+  width: 16%;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ice);
+}
+.gap-note {
+  margin-top: 20px;
+  padding: 16px 0 0;
+  font-size: 14.5px;
+  color: var(--muted);
+  border-top: 1px dashed var(--hairline);
+}
+
+/* FRONTIER */
+.frontier {
+  counter-reset: f;
+}
+.f-item {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 8px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.f-item:last-child { border-bottom: none; }
+.f-n {
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--gold);
+  line-height: 1.2;
+}
+.f-item h3 {
+  font-family: var(--serif);
+  font-size: 20px;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+.f-item p { margin: 0; font-size: 15px; color: var(--muted); }
+
+/* SPLIT */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  margin-top: 8px;
+}
+.split h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+  margin: 0 0 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--gold);
+}
+.watch li, .hard li {
+  list-style: none;
+}
+.watch, .hard {
+  margin: 0;
+  padding: 0;
+}
+.watch li, .hard li {
+  position: relative;
+  padding: 12px 0 12px 36px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 14.5px;
+  color: var(--muted);
+}
+.watch li:last-child, .hard li:last-child { border-bottom: none; }
+.watch li::before, .hard li::before {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+.watch li:nth-child(1)::before { content: "01"; }
+.watch li:nth-child(2)::before { content: "02"; }
+.watch li:nth-child(3)::before { content: "03"; }
+.watch li:nth-child(4)::before { content: "04"; }
+.watch li:nth-child(5)::before { content: "05"; }
+.watch li:nth-child(6)::before { content: "06"; }
+.hard li::before { content: "—"; color: var(--coral); }
+
+/* CAVEATS */
+.caveats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--coral);
+}
+.caveats li {
+  padding: 14px 0 14px 22px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 15px;
+  color: var(--muted);
+}
+.caveats li:last-child { border-bottom: none; }
+
+/* SOURCES */
+.sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 1;
+}
+.sources li {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13.5px;
+  break-inside: avoid;
+}
+.sources .sn {
+  font-family: var(--mono);
+  color: var(--gold);
+  font-size: 12px;
+  padding-top: 2px;
+}
+.sources a {
+  color: var(--ice);
+  border-bottom-color: rgba(110,200,184,0.25);
+  word-break: break-all;
+}
+.sources a:hover { border-bottom-color: var(--ice); }
+.sources .stitle { color: var(--text); margin-right: 8px; }
+
+footer {
+  margin: 72px 0 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .hero, .insights, .compare, .split, .pipe, .metrics, .metrics.two, .metrics.four {
+    grid-template-columns: 1fr;
+  }
+  .hero-right { text-align: left; margin-top: 12px; }
+  .caveat { margin-left: 0; }
+  .insight, .insight:last-child, .insight:nth-child(2), .col, .col:last-child {
+    border-right: none;
+    border-bottom: 1px solid var(--hairline);
+    padding: 22px 0;
+  }
+  .pipe-join { display: none; }
+  .scene-head { grid-template-columns: 48px 1fr; }
+  .row-metric { grid-template-columns: 1fr; gap: 4px; }
+}
+
+@media print {
+  @page { margin: 14mm 15mm; size: A4; }
+  html { scroll-behavior: auto; }
+  body {
+    background: #f3efe6 !important;
+    color: #16140f !important;
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+  body::before, body::after { display: none; }
+  .nav {
+    position: static;
+    background: none;
+    backdrop-filter: none;
+    border-bottom: 0.4pt solid #c4a35a;
+  }
+  .nav-links { display: none; }
+  .nav-mark { color: #8a6a22; }
+  .wrap { max-width: none; padding: 0; }
+  a { color: #1a4a44; border-bottom: none; }
+  h1, h2, h3, td:first-child, .stitle { color: #16140f; }
+  .giant, .m .n, .row-metric .n, .f-n, .sec-num, .kicker, .insight-idx, .pipe-idx, thead th {
+    color: #8a6a22 !important;
+  }
+  .m .n.ice, .row-metric .n.ice, .giant-cap, td:nth-child(2), .sources a { color: #2a6e64 !important; }
+  .m .n.coral, .row-metric .n.coral, .pill-vendor { color: #b24a32 !important; }
+  .pill-paper, .m .n.lilac { color: #5c4a8a !important; }
+  .muted, .insight p, .col p, .lede, .caveat, td, .f-item p, .watch li, .hard li, .caveats li, .subtitle {
+    color: #4a4e48 !important;
+  }
+  .hero, section, .scene { break-inside: avoid; }
+  .pipe-stage, .m, .gtf-note, .col {
+    background: #fffdf8 !important;
+    border-color: #d9d2c4 !important;
+  }
+  .insights, .compare, .rule, thead th, .split h3 {
+    border-color: #c4a35a !important;
+  }
+  .hero, .scene, td, .f-item, .watch li, .hard li, .caveats li, .sources li {
+    border-color: #d9d2c4 !important;
+  }
+  .caveats { border-left-color: #b24a32; }
+  footer { color: #6a6e68; }
+  .pipe-off span { border-color: #d9d2c4; }
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-mark">纳秒简报 <span>INTERNAL / 01</span></div>
+    <div class="nav-links">
+      <a href="#judgement">判断</a>
+      <a href="#path">路径</a>
+      <a href="#scenes">场景</a>
+      <a href="#why">为何 FPGA</a>
+      <a href="#vendors">厂商</a>
+      <a href="#frontier">前沿</a>
+      <a href="#watch">十二个月</a>
+      <a href="#notfact">口径</a>
+      <a href="#sources">来源</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<header class="hero" id="judgement">
+  <div>
+    <p class="kicker">Nanosecond Briefing</p>
+    <h1>FPGA × 金融科技</h1>
+    <p class="subtitle">应用与前沿 · 内部汇报</p>
+    <p class="date-line">2026-08-28 · 仅公开一手来源 · 数字按口径标注</p>
+  </div>
+  <div class="hero-right">
+    <p class="giant">13.9<sup>ns</sup></p>
+    <p class="giant-cap">STAC-T0 公开天花板</p>
+    <p class="caveat">网络 I/O 的 actionable latency，不是带完整策略的端到端 tick-to-trade。</p>
+  </div>
+</header>
+
+<div class="legend">
+  <span class="legend-label">CALIBER</span>
+  <span class="legend-item"><span class="pill pill-stac">STAC</span> 独立基准测试</span>
+  <span class="legend-item"><span class="pill pill-vendor">厂商</span> 厂商规格或宣传，未经第三方审计</span>
+  <span class="legend-item"><span class="pill pill-paper">论文</span> 学术研究</span>
+</div>
+
+<div class="insights">
+  <article class="insight">
+    <div class="insight-idx">01 / 生产</div>
+    <h3>FPGA 已是生产默认件</h3>
+    <p>行情处理、TCP 会话、交易前风控、L1 交换——不是概念验证，是机房里在跑的东西。</p>
+  </article>
+  <article class="insight">
+    <div class="insight-idx">02 / 口径</div>
+    <h3>纳秒竞赛是 I/O，不是全策略</h3>
+    <p>公开纪录量的是触发字段进 FPGA 到 TCP 订单离 FPGA。完整策略路径不在这个数里。</p>
+  </article>
+  <article class="insight">
+    <div class="insight-idx">03 / 机器学习</div>
+    <h3>ML 是微秒级产品</h3>
+    <p>GBT / LSTM 已可采购，公开金融推理多在 1–3 µs。还没走进 13.9 ns 那条热路径。厂商 kit 里有约 250 ns 的 inline GBT，仍是厂商数。</p>
+  </article>
+</div>
+
+<section id="path">
+  <div class="sec-head"><span class="sec-num">02</span><h2>生产路径</h2></div>
+  <hr class="rule">
+  <p class="lede">关键路径四段，落在同一块 fabric。CPU 不在这条路上。</p>
+  <div class="pipe">
+    <div class="pipe-stage">
+      <span class="pipe-idx">PHY</span>
+      <strong>PHY</strong>
+      <p>线侧收包。10GbE 仍是公开超低延迟数字的主场。</p>
+    </div>
+    <div class="pipe-join" aria-hidden="true"></div>
+    <div class="pipe-stage">
+      <span class="pipe-idx">PARSE</span>
+      <strong>协议解析</strong>
+      <p>A/B 仲裁、解码、归一化。行情进 FPGA，不进内核。</p>
+    </div>
+    <div class="pipe-join" aria-hidden="true"></div>
+    <div class="pipe-stage">
+      <span class="pipe-idx">TRIGGER</span>
+      <strong>触发模板订单</strong>
+      <p>预装订单模板，硬件 trigger / update。复杂 alpha 仍在 CPU。</p>
+    </div>
+    <div class="pipe-join" aria-hidden="true"></div>
+    <div class="pipe-stage">
+      <span class="pipe-idx">SEND</span>
+      <strong>TCP 发单</strong>
+      <p>硬件 TCP 离 FPGA。STAC-T0 的钟，停在这一拍。</p>
+    </div>
+  </div>
+  <div class="pipe-off"><span>CPU OFF THE HOT PATH</span></div>
+</section>
+
+<section id="scenes">
+  <div class="sec-head"><span class="sec-num">03</span><h2>七个场景</h2></div>
+  <hr class="rule">
+  <p class="lede">生产里真正在卖、在跑的七块。数字跟着口径走，不把厂商数写成已审计结论。</p>
+
+  <article class="scene">
+    <div class="scene-head"><span class="scene-n">01</span><h3>超低延迟交易 / 网络 I/O</h3></div>
+    <p>目前公开纪录是 <span class="pill pill-stac">STAC</span> STAC-T0：507 字节帧最低 actionable latency <strong>13.9 ns</strong>（Exegy nxFramework + AMD Alveo UL3524，2024-04）。量的是「触发字段进入 FPGA」到「TCP 订单离开 FPGA」，10GbE，抖动声称 200 ps。它不是完整策略路径。</p>
+    <div class="metrics two">
+      <div class="m">
+        <span class="pill pill-stac">STAC</span>
+        <div class="n ice">13.9 ns</div>
+        <div class="l">STAC-T0 · 507 字节帧最低 actionable latency · Exegy nxFramework + Alveo UL3524 · 2024-04</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">389 ns</div>
+        <div class="l">Exegy nxAccess · CME switch SOP-to-SOP · 硬件 tick-to-trade + pattern matcher</div>
+      </div>
+    </div>
+    <div class="row-metric">
+      <div class="n coral">624 ns</div>
+      <div class="l muted"><span class="pill pill-vendor">厂商</span> nxAccess，硬件路径、无 matcher。</div>
+    </div>
+    <div class="row-metric">
+      <div class="n coral">1.5 µs</div>
+      <div class="l muted"><span class="pill pill-vendor">厂商</span> nxAccess，软件路径。</div>
+    </div>
+  </article>
+
+  <article class="scene">
+    <div class="scene-head"><span class="scene-n">02</span><h3>行情 / Feed / 订单簿</h3></div>
+    <p>典型工作：A/B 仲裁、解码、归一化、建簿。Exegy nxFeed 是现有行情产品线。Celoxica QDS 走场所覆盖。</p>
+    <div class="metrics">
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">2 µs</div>
+        <div class="l">Exegy Nexus 软件侧拿到行情。2025-06-25 发布，计划 2025 Q4 初量产。</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">&lt;3 µs</div>
+        <div class="l">Nexus 策略反应。</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">&lt;350 ns</div>
+        <div class="l">对接 tick-to-trade 时，多市场聚合。</div>
+      </div>
+    </div>
+    <p class="muted">Celoxica QDS <span class="pill pill-vendor">厂商</span> 宣称覆盖 <strong>80+</strong> 场所。</p>
+  </article>
+
+  <article class="scene">
+    <div class="scene-head"><span class="scene-n">03</span><h3>下单 / DMA / 会话</h3></div>
+    <p>Celoxica GXA 是 ULL 网关产品线。Exegy FPGA FIX 引擎把会话卸到 FPGA，不完全是 HFT 纳秒路径——券商 / 交易所网关、FIX↔native 风控更常见。</p>
+    <div class="metrics">
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">128</div>
+        <div class="u">SESSIONS</div>
+        <div class="l">Exegy FPGA FIX 引擎最多会话数。</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">2 核</div>
+        <div class="l">主机占用。称对比软件路径约 40 核。</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">40 核</div>
+        <div class="l">软件路径对照。数字来自厂商，未经 STAC。</div>
+      </div>
+    </div>
+  </article>
+
+  <article class="scene">
+    <div class="scene-head"><span class="scene-n">04</span><h3>交易前风控</h3></div>
+    <p>15c3-5 / MiFID II。这一条在生产里很实，不是展会概念。软件会加微秒到毫秒；FPGA 做成 bump-in-the-wire。</p>
+    <div class="row-metric">
+      <div class="n coral">单位数 µs</div>
+      <div class="l muted"><span class="pill pill-vendor">厂商</span> Celoxica MAG，FIX 线到线；Native 数百纳秒。2026 TradingTech Europe 获 Best Pre-Trade Risk Controls。</div>
+    </div>
+    <div class="row-metric">
+      <div class="n coral">&lt;1 µs</div>
+      <div class="l muted"><span class="pill pill-vendor">厂商</span> Algo-Logic PTRC，10GbE 完整检查远低于 1 µs。</div>
+    </div>
+    <div class="row-metric">
+      <div class="n coral">200 ns</div>
+      <div class="l muted"><span class="pill pill-vendor">厂商</span> Magmio，称低至 200 ns（Alveo UL3524 / Cisco Nexus SmartNIC）。</div>
+    </div>
+  </article>
+
+  <article class="scene">
+    <div class="scene-head"><span class="scene-n">05</span><h3>网络卸载与 L1</h3></div>
+    <p>加速卡、SmartNIC、L1 交换机不是一类东西。7130 是机房标配，不是加速卡。</p>
+    <div class="metrics four">
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">53 ns</div>
+        <div class="l">Exegy 全 TCP RTT</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">43 ns</div>
+        <div class="l">Exegy 全 UDP RTT</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-stac">STAC</span>
+        <div class="n ice">1.9 µs</div>
+        <div class="l">LMS ÜberNIC STAC-N1 · 66 字节 mean · 2024-05</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">5–6 ns</div>
+        <div class="l">Arista 7130 L1 交换 · MetaMux 约 39 ns</div>
+      </div>
+    </div>
+    <p class="muted">LMS ÜberNIC（Intel Agilex + PCIe 5.0 + CXL）：<span class="pill pill-stac">STAC</span> STAC-N1 首次公开测全 FPGA UDP 栈和 CXL 栈。Cisco Nexus SmartNIC 同在这条产品带上。</p>
+  </article>
+
+  <article class="scene">
+    <div class="scene-head"><span class="scene-n">06</span><h3>交易路径上的机器学习</h3></div>
+    <p>有产品、有 STAC，但量级是微秒，不是纳秒。公开金融推理纪录目前在 FPGA 栈上。</p>
+    <div class="metrics">
+      <div class="m">
+        <span class="pill pill-stac">STAC</span>
+        <div class="n ice">1.60 µs</div>
+        <div class="l">Xelera Silva · STAC-ML El Popo · GBT_A p99 · 2026-05-27</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-vendor">厂商</span>
+        <div class="n coral">250 ns</div>
+        <div class="l">Xelera kit 称 UL3524 上 LightGBM p99。厂商 kit，不是 STAC-T0。</div>
+      </div>
+      <div class="m">
+        <span class="pill pill-stac">STAC</span>
+        <div class="n ice">2 µs</div>
+        <div class="l">Myrtle VOLLO · STAC Summit 2026-04 p99 · Versal Premium VP1802</div>
+      </div>
+    </div>
+    <p>Myrtle CEO 称「数十万小时生产交易」。AMD FINN 是工具链，不是交易产品。</p>
+  </article>
+
+  <article class="scene">
+    <div class="scene-head"><span class="scene-n">07</span><h3>密码学</h3></div>
+    <p>HFT 热路径的公开材料几乎不谈 TLS / HSM。看得到的是硬件 TCP/UDP、FIX 会话、CRC。不宜写成主流用途。</p>
+  </article>
+</section>
+
+<section id="why">
+  <div class="sec-head"><span class="sec-num">04</span><h2>为何是 FPGA</h2></div>
+  <hr class="rule">
+  <p class="lede">确定时延、线速并行、可改写。关键路径不走操作系统调度。</p>
+  <div class="compare">
+    <div class="col lead">
+      <h3>FPGA</h3>
+      <p>PHY 到发单可落在同一块 fabric。生产主流：行情 + TCP + 风控 + 触发模板在 FPGA，复杂 alpha 在 CPU。</p>
+    </div>
+    <div class="col">
+      <h3>相对 CPU</h3>
+      <p>CPU 仍跑策略、会话、审计。Feed、发单、风控如果走软件，抖动会上来。</p>
+    </div>
+    <div class="col">
+      <h3>相对 GPU</h3>
+      <p>GPU 强在吞吐和训练。HFT 要的是 batch=1、抖动接近零。公开 STAC-ML 金融推理纪录目前在 FPGA 栈（Myrtle / Xelera）。</p>
+    </div>
+    <div class="col">
+      <h3>相对 ASIC</h3>
+      <p>协议和监管会变，FPGA 可重配。eFPGA 嵌进 ASIC 不是主流加速卡形态。</p>
+    </div>
+  </div>
+  <div class="gtf-note">
+    <strong>不要把硅片 I/O 当成交易延迟。</strong>
+    AMD UL3524 / UL3422 的 GTF 收发器 &lt;3 ns 是近端 loopback 的硅片 I/O，不含协议，不是交易延迟。
+  </div>
+</section>
+
+<section id="vendors">
+  <div class="sec-head"><span class="sec-num">05</span><h2>代表厂商</h2></div>
+  <hr class="rule">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>厂商</th><th>位置</th><th>要点</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>AMD</td>
+          <td>硅片 / 加速卡</td>
+          <td>Alveo UL3524（2023-09）、UL3422 瘦卡；合作 Exegy、Xelera。</td>
+        </tr>
+        <tr>
+          <td>Altera（原 Intel PSG）</td>
+          <td>硅片</td>
+          <td>2025-04 Silver Lake 购 51%，估值 $8.75B。Agilex 7，用于 LMS ÜberNIC 及部分 ML。</td>
+        </tr>
+        <tr>
+          <td>Exegy</td>
+          <td>最完整商业栈</td>
+          <td>收购 Enyx（2022）、NovaSparks（2026-01-14）。产品：Nexus / nxFeed / nxAccess / nxFramework。目前公开材料里，FPGA 行情 + 交易 + 框架最完整的一家。</td>
+        </tr>
+        <tr>
+          <td>Celoxica</td>
+          <td>风控 / 下单 / 行情</td>
+          <td>MAG / GXA / QDS。确定性在单数微秒级，不是 13.9 ns 那一档。</td>
+        </tr>
+        <tr>
+          <td>Xelera Silva、Myrtle VOLLO</td>
+          <td>ML 推理产品化</td>
+          <td>有 STAC 纪录，量级在微秒。</td>
+        </tr>
+        <tr>
+          <td>LMS + BittWare</td>
+          <td>SmartNIC</td>
+          <td>ÜberNIC，STAC-N1 含 CXL。</td>
+        </tr>
+        <tr>
+          <td>Cisco、Arista</td>
+          <td>网络</td>
+          <td>Nexus SmartNIC；7130 是 L1 交换机。</td>
+        </tr>
+        <tr>
+          <td>Algo-Logic、Magmio</td>
+          <td>交易前风控</td>
+          <td>生产向产品，延迟数字多为厂商数。</td>
+        </tr>
+        <tr>
+          <td>Achronix</td>
+          <td>eFPGA</td>
+          <td>2022 声称 ASIC 内 UDP-to-TCP &lt;10 ns，无 STAC。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="gap-note"><strong style="color:var(--text);font-weight:500;">客户名单缺口。</strong> AMD 只说「领先交易公司已部署」，没有公开客户名单。不宜点名推断具体哪家自营用哪张卡。</p>
+</section>
+
+<section id="frontier">
+  <div class="sec-head"><span class="sec-num">06</span><h2>2024–2026 前沿</h2></div>
+  <hr class="rule">
+  <div class="frontier">
+    <article class="f-item">
+      <div class="f-n">01</div>
+      <div>
+        <h3>专用超低延迟硅片</h3>
+        <p>UL3524 的 GTF + 硬化 MAC/PCS，支撑了 <span class="pill pill-stac">STAC</span> STAC-T0 13.9 ns。</p>
+      </div>
+    </article>
+    <article class="f-item">
+      <div class="f-n">02</div>
+      <div>
+        <h3>CXL SmartNIC</h3>
+        <p><span class="pill pill-stac">STAC</span> STAC-N1（2024-05）已测。CXL 3.0 cache-coherent 进入热路径的公开生产案例仍少。</p>
+      </div>
+    </article>
+    <article class="f-item">
+      <div class="f-n">03</div>
+      <div>
+        <h3>ML 产品化</h3>
+        <p>STAC-ML 从 LSTM 扩到 El Popo GBT（2026-05）。大模型 / Transformer 没有纳秒级 tick-to-trade 的公开生产证据。</p>
+      </div>
+    </article>
+    <article class="f-item">
+      <div class="f-n">04</div>
+      <div>
+        <h3>学术侧</h3>
+        <p>LightTrader（HPCA 2023）；Liu et al.（IEEE ASAP 2024）订单簿 26–209 ns <span class="pill pill-paper">论文</span>；VLSI-TSA 2026 在 Alveo U50 上风控单笔约 518–530 ns <span class="pill pill-paper">论文</span>；O’Mahony Electronics 2024 期权定价相对 CPU 270–5400× <span class="pill pill-paper">论文</span>，这是定价 / 风险，不是发单。</p>
+      </div>
+    </article>
+    <article class="f-item">
+      <div class="f-n">05</div>
+      <div>
+        <h3>LLM 写金融 Verilog</h3>
+        <p>FinHardBench（arXiv:2608.00909，2026-08）：功能正确率 19–61% <span class="pill pill-paper">论文</span>。能综合，但算错很常见，不能当生产 RTL 主力。</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="watch">
+  <div class="sec-head"><span class="sec-num">07</span><h2>尚未铺开 · 未来十二个月</h2></div>
+  <hr class="rule">
+  <div class="split">
+    <div>
+      <h3>困难、尚未铺开</h3>
+      <ul class="hard">
+        <li>完整策略进 FPGA。</li>
+        <li>纳秒级 ML：公开 inline GBT 约 250 ns 为厂商 kit；LSTM / NN 多在 1–3 µs。</li>
+        <li>深订单簿对延迟：片上内存不够。</li>
+        <li>公开超低延迟多数仍是 10G。</li>
+        <li>CXL 没有 T0 量级的热路径数字。</li>
+        <li>eFPGA / ASIC 只有极头部自营会做。</li>
+        <li>LLM 生成 RTL 的真正风险是：能出 bitstream，但逻辑是错的。</li>
+      </ul>
+    </div>
+    <div>
+      <h3>未来 12 个月值得盯</h3>
+      <ul class="watch">
+        <li>Nexus 量产，以及 NovaSparks 并入 Exegy 之后的产品形态。</li>
+        <li>STAC-ML El Popo 会不会出现第二家。</li>
+        <li>AMD 下一代 ULL 卡（Risk.net 采访 Hamid Salehi：客户在问 UL3422 之后是什么）。</li>
+        <li>Altera 独立后会不会补金融专用卡。</li>
+        <li>Inline 推理会不会进入真实 tick-to-trade。</li>
+        <li>24/5、欧股 CTP、中东交易所扩张，推的是 feed 密度，不一定是更低纳秒。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="notfact">
+  <div class="sec-head"><span class="sec-num">08</span><h2>不宜当作事实</h2></div>
+  <hr class="rule">
+  <p class="lede">以下内容在整理时已排除，请勿回写进对外口径。</p>
+  <ul class="caveats">
+    <li>QuantVPS 一类「2026 标准 100–500 ns T2T」的二手概括。</li>
+    <li>GitHub 上 sub-50 ns + 神经网络、未经 STAC 的实现。</li>
+    <li>Nexus「某经纪商年省 $1.4–2M」的厂商 ROI。</li>
+    <li>Magmio 200 ns、Celoxica Native 数百 ns、Silva inline 250 ns：这些都是厂商数，不是审计结论。</li>
+  </ul>
+</section>
+
+<section id="sources">
+  <div class="sec-head"><span class="sec-num">09</span><h2>主要来源</h2></div>
+  <hr class="rule">
+  <ol class="sources">
+    <li><span class="sn">01</span><span><span class="stitle">STAC-T0 Exegy / AMD（2024-04）</span><a href="https://docs.stacresearch.com/news/AMD240422">https://docs.stacresearch.com/news/AMD240422</a></span></li>
+    <li><span class="sn">02</span><span><span class="stitle">AMD UL3524 发布（2023-09-27）</span><a href="https://ir.amd.com/news-events/press-releases/detail/1158/amd-unveils-purpose-built-fpga-based-accelerator-for-ultra-low-latency-electronic-trading">https://ir.amd.com/news-events/press-releases/detail/1158/amd-unveils-purpose-built-fpga-based-accelerator-for-ultra-low-latency-electronic-trading</a></span></li>
+    <li><span class="sn">03</span><span><span class="stitle">AMD UL3422</span><a href="https://www.amd.com/en/products/accelerators/alveo/ul3422.html">https://www.amd.com/en/products/accelerators/alveo/ul3422.html</a></span></li>
+    <li><span class="sn">04</span><span><span class="stitle">A-Team Insight（解释 T0 测什么）</span><a href="https://a-teaminsight.com/blog/exegy-and-amd-achieve-record-breaking-tick-to-trade-latency-in-stac-t0-benchmark/">https://a-teaminsight.com/blog/exegy-and-amd-achieve-record-breaking-tick-to-trade-latency-in-stac-t0-benchmark/</a></span></li>
+    <li><span class="sn">05</span><span><span class="stitle">Exegy Nexus（2025-06-25）</span><a href="https://www.exegy.com/nexus-launch/">https://www.exegy.com/nexus-launch/</a></span></li>
+    <li><span class="sn">06</span><span><span class="stitle">Exegy 收购 NovaSparks（2026-01-14）</span><a href="https://www.exegy.com/exegy-acquires-novasparks/">https://www.exegy.com/exegy-acquires-novasparks/</a></span></li>
+    <li><span class="sn">07</span><span><span class="stitle">nxAccess</span><a href="https://www.exegy.com/products/nxaccess/">https://www.exegy.com/products/nxaccess/</a></span></li>
+    <li><span class="sn">08</span><span><span class="stitle">nxFramework</span><a href="https://www.exegy.com/products/nxframework/">https://www.exegy.com/products/nxframework/</a></span></li>
+    <li><span class="sn">09</span><span><span class="stitle">Celoxica</span><a href="https://celoxica.com/products/">https://celoxica.com/products/</a></span></li>
+    <li><span class="sn">10</span><span><span class="stitle">Xelera STAC-ML El Popo（2026-05-27）</span><a href="https://www.xelera.io/post/xelera-sets-the-first-stac-ml-el-popo-world-record">https://www.xelera.io/post/xelera-sets-the-first-stac-ml-el-popo-world-record</a></span></li>
+    <li><span class="sn">11</span><span><span class="stitle">Myrtle VOLLO（2026-04-29）</span><a href="https://myrtle.ai/resources/news/myrtle-ai-halves-latency-in-financial-machine-learning-inference-benchmark-record-with-vollo/">https://myrtle.ai/resources/news/myrtle-ai-halves-latency-in-financial-machine-learning-inference-benchmark-record-with-vollo/</a></span></li>
+    <li><span class="sn">12</span><span><span class="stitle">STAC LMS ÜberNIC CXL（2024-05）</span><a href="https://www.stacresearch.com/news/LMS240510a">https://www.stacresearch.com/news/LMS240510a</a></span></li>
+    <li><span class="sn">13</span><span><span class="stitle">Intel / Altera Silver Lake（2025-04-14）</span><a href="https://newsroom.intel.com/corporate/intel-partner-deal-news-april2025">https://newsroom.intel.com/corporate/intel-partner-deal-news-april2025</a></span></li>
+    <li><span class="sn">14</span><span><span class="stitle">Arista 7130LS</span><a href="https://www.arista.com/assets/data/pdf/Datasheets/7130LS-Series-Data-Sheet.pdf">https://www.arista.com/assets/data/pdf/Datasheets/7130LS-Series-Data-Sheet.pdf</a></span></li>
+    <li><span class="sn">15</span><span><span class="stitle">FinHardBench（arXiv:2608.00909，2026-08）</span><a href="https://arxiv.org/html/2608.00909">https://arxiv.org/html/2608.00909</a></span></li>
+    <li><span class="sn">16</span><span><span class="stitle">Magmio</span><a href="https://www.magmio.com/fpga-trade-risk-check">https://www.magmio.com/fpga-trade-risk-check</a></span></li>
+    <li><span class="sn">17</span><span><span class="stitle">Algo-Logic</span><a href="https://www.algo-logic.com/pre-trade-risk-check">https://www.algo-logic.com/pre-trade-risk-check</a></span></li>
+    <li><span class="sn">18</span><span><span class="stitle">Exegy FPGA FIX</span><a href="https://www.exegy.com/fpga-fix-community/">https://www.exegy.com/fpga-fix-community/</a></span></li>
+    <li><span class="sn">19</span><span><span class="stitle">AMD UL3524 产品页</span><a href="https://www.amd.com/en/products/accelerators/alveo/ul3524.html">https://www.amd.com/en/products/accelerators/alveo/ul3524.html</a></span></li>
+  </ol>
+</section>
+
+<footer>
+  <div>纳秒简报 · FPGA × 金融科技</div>
+  <div>资料截止 2026-08-28 · 内部材料</div>
+</footer>
+
+</div>
+</body>
+</html>
