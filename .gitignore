@@ -4,3 +4,11 @@
 *~
 .vscode/
 .idea/
+__pycache__/
+*.pyc
+.venv/
+.local/
+sim_build/
+results.xml
+*.vcd
+*.fst
