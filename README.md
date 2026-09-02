@@ -12,7 +12,7 @@
 | FPGA 硬件行情订单簿 | [`research/hardware-orderbook/`](research/hardware-orderbook/) | 建簿产品与设计思路 |
 | AI Agent 在 FPGA 开发与验证 | [`research/ai-agent-fpga-verification/`](research/ai-agent-fpga-verification/) | 可复制闭环，不是端到端自治签核 |
 | Siemens vs Synopsys 仿真工具 | [`research/eda-sim-siemens-synopsys/`](research/eda-sim-siemens-synopsys/) | 数字功能仿真对比笔记 |
-| 券商 FPGA 行情卡（UL3524）规格 | [`research/md-card-ul3524/`](research/md-card-ul3524/) | 规格 v1 + 模块设计 v1 |
+| 券商 FPGA 行情卡（UL3524 / X1100） | [`research/md-card-ul3524/`](research/md-card-ul3524/) | 规格、模块设计、订单簿/L0/L1 DDR、X1100 适配与 Yusur NDPP 计划 |
 
 每个主题里 `调研汇报.md` / `调研汇报-初稿.md` / `规格-v1.md` 是中文稿，`briefing.md` 是对应英文底稿（有则）。
 
@@ -20,5 +20,5 @@
 
 | 工程 | 路径 | 说明 |
 | --- | --- | --- |
-| 行情卡 RTL/仿真 | [`dev/fpga-md-card/`](dev/fpga-md-card/) | UDP strip、深/沪解码、仲裁、符号 CAM、组播/DMA |
+| 行情卡 RTL/仿真 | [`dev/fpga-md-card/`](dev/fpga-md-card/) | UDP strip、深/沪 Binary+FAST、仲裁、event merge、订单簿 L0/L1、X1100 适配、组播/DMA |
 | TCP 报单发送核 | [`dev/fpga-order-tcp-tx/`](dev/fpga-order-tcp-tx/) | AXI-Stream 64b TCP client + order buffer |

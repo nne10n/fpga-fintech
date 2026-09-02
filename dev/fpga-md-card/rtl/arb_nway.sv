@@ -1,8 +1,8 @@
 // -----------------------------------------------------------------------------
 // arb_nway.sv — Post-decode A/B(+TCP) sequence arbiter (M3)
 //
-// Inputs : port A, B, TCP (optional backfill) — event AXIS 512b, single-beat
-// Output : one event AXIS
+// Inputs : port A, B, TCP (optional backfill) — event AXIS 512b + code[47:0]
+// Output : one event AXIS + m_code (muxed from winning source)
 // Key    : event.seq + event.ch  (same exch assumed per instance)
 // State  : expect_seq[N_CH] flop array (combo read; 1-cycle registered emit)
 //
@@ -29,21 +29,25 @@ module arb_nway
   input  logic         s_a_tvalid,
   input  logic         s_a_tlast,
   output logic         s_a_tready,
+  input  logic [47:0]  s_a_code,
 
   input  logic [511:0] s_b_tdata,
   input  logic         s_b_tvalid,
   input  logic         s_b_tlast,
   output logic         s_b_tready,
+  input  logic [47:0]  s_b_code,
 
   input  logic [511:0] s_tcp_tdata,
   input  logic         s_tcp_tvalid,
   input  logic         s_tcp_tlast,
   output logic         s_tcp_tready,
+  input  logic [47:0]  s_tcp_code,
 
   output logic [511:0] m_event_tdata,
   output logic         m_event_tvalid,
   output logic         m_event_tlast,
   input  logic         m_event_tready,
+  output logic [47:0]  m_code,
 
   output logic [31:0]  fwd,
   output logic [31:0]  drop_dup,
@@ -73,21 +77,26 @@ module arb_nway
   localparam int N_PORTS = 3;
 
   logic [511:0] sk_data_q  [0:N_PORTS-1];
+  logic [47:0]  sk_code_q  [0:N_PORTS-1];
   logic         sk_valid_q [0:N_PORTS-1];
 
   logic [511:0] in_tdata  [0:N_PORTS-1];
+  logic [47:0]  in_code   [0:N_PORTS-1];
   logic         in_tvalid [0:N_PORTS-1];
   logic         in_tready [0:N_PORTS-1];
 
   assign in_tdata[0]  = s_a_tdata;
+  assign in_code[0]   = s_a_code;
   assign in_tvalid[0] = s_a_tvalid;
   assign s_a_tready   = in_tready[0];
 
   assign in_tdata[1]  = s_b_tdata;
+  assign in_code[1]   = s_b_code;
   assign in_tvalid[1] = s_b_tvalid;
   assign s_b_tready   = in_tready[1];
 
   assign in_tdata[2]  = s_tcp_tdata;
+  assign in_code[2]   = s_tcp_code;
   assign in_tvalid[2] = s_tcp_tvalid;
   assign s_tcp_tready = in_tready[2];
 
@@ -95,11 +104,13 @@ module arb_nway
   // Output register
   // -------------------------------------------------------------------------
   logic [511:0] out_data_q;
+  logic [47:0]  out_code_q;
   logic         out_valid_q;
 
   assign m_event_tdata  = out_data_q;
   assign m_event_tvalid = out_valid_q;
   assign m_event_tlast  = 1'b1;
+  assign m_code         = out_code_q;
 
   wire out_slot = !out_valid_q || m_event_tready;
 
@@ -121,6 +132,7 @@ module arb_nway
   logic         sel_valid;
   logic [1:0]   sel_port;
   logic [511:0] sel_data;
+  logic [47:0]  sel_code;
   event_t       sel_ev;
   logic [3:0]   sel_ch;
   logic [31:0]  sel_seq;
@@ -140,11 +152,13 @@ module arb_nway
     sel_valid = 1'b0;
     sel_port  = 2'd0;
     sel_data  = '0;
+    sel_code  = '0;
     for (int i = 0; i < N_PORTS; i++) begin
       if (!sel_valid && sk_valid_q[i]) begin
         sel_valid = 1'b1;
         sel_port  = 2'(unsigned'(i));
         sel_data  = sk_data_q[i];
+        sel_code  = sk_code_q[i];
       end
     end
 
@@ -194,11 +208,13 @@ module arb_nway
       for (int i = 0; i < N_PORTS; i++) begin
         sk_valid_q[i] <= 1'b0;
         sk_data_q[i]  <= '0;
+        sk_code_q[i]  <= '0;
       end
       for (int c = 0; c < N_CH; c++)
         expect_q[c] <= 32'd1;
       out_valid_q <= 1'b0;
       out_data_q  <= '0;
+      out_code_q  <= '0;
       c_fwd_q <= '0;
       c_dup_q <= '0;
       c_tcp_q <= '0;
@@ -212,6 +228,7 @@ module arb_nway
       if (can_fire) begin
         if (do_fwd) begin
           out_data_q  <= out_ev;
+          out_code_q  <= sel_code;
           out_valid_q <= 1'b1;
           expect_q[sel_ch] <= expect_next;
           c_fwd_q <= sat_inc(c_fwd_q);
@@ -232,12 +249,14 @@ module arb_nway
           if (in_tvalid[i] && in_tready[i]) begin
             // simultaneous pop + push
             sk_data_q[i]  <= in_tdata[i];
+            sk_code_q[i]  <= in_code[i];
             sk_valid_q[i] <= 1'b1;
           end else begin
             sk_valid_q[i] <= 1'b0;
           end
         end else if (in_tvalid[i] && in_tready[i]) begin
           sk_data_q[i]  <= in_tdata[i];
+          sk_code_q[i]  <= in_code[i];
           sk_valid_q[i] <= 1'b1;
         end
       end

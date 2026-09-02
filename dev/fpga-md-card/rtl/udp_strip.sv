@@ -1,13 +1,17 @@
 // -----------------------------------------------------------------------------
-// udp_strip.sv — Cut-through Eth/IPv4/UDP header strip → payload AXIS-64
+// udp_strip.sv — Cut-through Eth/IPv4/UDP header strip → payload AXIS
 // Wire byte 0 in tdata[7:0]. s_axis_tready tied 1. No L3/L4 checksum checks.
 // Extra counter drop_filter: dest MAC/IP/UDP-port filter miss (not proto/IHL).
+// DATA_W = 32|64 (default 64). KEEP_W = DATA_W/8.
 // -----------------------------------------------------------------------------
 `timescale 1ns / 1ps
 
 module udp_strip
   import md_pkg::*;
-(
+#(
+  parameter int DATA_W = 64,
+  parameter int KEEP_W = DATA_W / 8
+) (
   input  logic        clk,
   input  logic        rst_n,
 
@@ -15,19 +19,19 @@ module udp_strip
   input  logic [31:0] cfg_dst_ip,
   input  logic [15:0] cfg_udp_dport,
 
-  input  logic [63:0] s_axis_tdata,
-  input  logic [7:0]  s_axis_tkeep,
-  input  logic        s_axis_tvalid,
-  input  logic        s_axis_tlast,
-  output logic        s_axis_tready,
-  input  eth_tuser_t  s_axis_tuser,
+  input  logic [DATA_W-1:0] s_axis_tdata,
+  input  logic [KEEP_W-1:0] s_axis_tkeep,
+  input  logic              s_axis_tvalid,
+  input  logic              s_axis_tlast,
+  output logic              s_axis_tready,
+  input  eth_tuser_t        s_axis_tuser,
 
-  output logic [63:0] m_axis_tdata,
-  output logic [7:0]  m_axis_tkeep,
-  output logic        m_axis_tvalid,
-  output logic        m_axis_tlast,
-  input  logic        m_axis_tready,
-  output pay_tuser_t  m_axis_tuser,
+  output logic [DATA_W-1:0] m_axis_tdata,
+  output logic [KEEP_W-1:0] m_axis_tkeep,
+  output logic              m_axis_tvalid,
+  output logic              m_axis_tlast,
+  input  logic              m_axis_tready,
+  output pay_tuser_t        m_axis_tuser,
 
   output logic [31:0] drop_not_udp,
   output logic [31:0] drop_opt,
@@ -55,15 +59,15 @@ module udp_strip
   logic [15:0] dport_q;
   eth_tuser_t  tuser_q;
 
-  logic [7:0]  pend_q  [0:7];
+  logic [7:0]  pend_q  [0:KEEP_W-1];
   logic [3:0]  pend_n_q;
 
   // 2-deep output skid (realign can produce 2 beats per input beat)
-  logic [63:0] odata_q [0:1];
-  logic [7:0]  okeep_q [0:1];
-  logic        olast_q [0:1];
-  pay_tuser_t  otuser_q[0:1];
-  logic [1:0]  ocount_q; // 0..2
+  logic [DATA_W-1:0] odata_q [0:1];
+  logic [KEEP_W-1:0] okeep_q [0:1];
+  logic              olast_q [0:1];
+  pay_tuser_t        otuser_q[0:1];
+  logic [1:0]        ocount_q; // 0..2
 
   logic [31:0] c_not_udp_q;
   logic [31:0] c_opt_q;
@@ -150,7 +154,7 @@ module udp_strip
       c_ok_q      <= '0;
       for (i = 0; i < HDR_LEN; i++)
         hdr_q[i] <= '0;
-      for (i = 0; i < 8; i++)
+      for (i = 0; i < KEEP_W; i++)
         pend_q[i] <= '0;
       for (i = 0; i < 2; i++) begin
         odata_q[i]  <= '0;
@@ -160,10 +164,10 @@ module udp_strip
       end
     end else begin
       automatic logic [1:0] oc = ocount_q;
-      automatic logic [63:0] od0 = odata_q[0], od1 = odata_q[1];
-      automatic logic [7:0]  ok0 = okeep_q[0], ok1 = okeep_q[1];
-      automatic logic        ol0 = olast_q[0], ol1 = olast_q[1];
-      automatic pay_tuser_t  ou0 = otuser_q[0], ou1 = otuser_q[1];
+      automatic logic [DATA_W-1:0] od0 = odata_q[0], od1 = odata_q[1];
+      automatic logic [KEEP_W-1:0] ok0 = okeep_q[0], ok1 = okeep_q[1];
+      automatic logic              ol0 = olast_q[0], ol1 = olast_q[1];
+      automatic pay_tuser_t        ou0 = otuser_q[0], ou1 = otuser_q[1];
 
       // Pop front if downstream ready
       if (oc != 2'd0 && m_axis_tready) begin
@@ -186,7 +190,7 @@ module udp_strip
         automatic logic [15:0] dp = dport_q;
         automatic eth_tuser_t  tu = tuser_q;
         automatic logic [7:0]  htmp [0:HDR_LEN-1];
-        automatic logic [7:0]  ptmp [0:7];
+        automatic logic [7:0]  ptmp [0:KEEP_W-1];
         automatic logic        go_drop = 1'b0;
         automatic logic [1:0]  why = 2'd0;
         automatic logic        hdr_just_done = 1'b0;
@@ -196,7 +200,7 @@ module udp_strip
 
         for (i = 0; i < HDR_LEN; i++)
           htmp[i] = hdr_q[i];
-        for (i = 0; i < 8; i++)
+        for (i = 0; i < KEEP_W; i++)
           ptmp[i] = pend_q[i];
 
         if (st == ST_IDLE) begin
@@ -206,7 +210,7 @@ module udp_strip
           pr = '0;
           for (i = 0; i < HDR_LEN; i++)
             htmp[i] = '0;
-          for (i = 0; i < 8; i++)
+          for (i = 0; i < KEEP_W; i++)
             ptmp[i] = '0;
           st = ST_HDR;
         end
@@ -217,7 +221,7 @@ module udp_strip
         pu.l4_prot   = 8'd17;
         pu.from_tcp  = 1'b0;
 
-        for (i = 0; i < 8; i++) begin
+        for (i = 0; i < KEEP_W; i++) begin
           if (s_axis_tkeep[i]) begin
             automatic logic [7:0] b = s_axis_tdata[i*8 +: 8];
 
@@ -244,16 +248,16 @@ module udp_strip
             end else if (st == ST_PASS) begin
               if (pr != 16'd0) begin
                 automatic logic is_last = (pr == 16'd1);
-                automatic logic [63:0] ed;
-                automatic logic [7:0]  ek;
+                automatic logic [DATA_W-1:0] ed;
+                automatic logic [KEEP_W-1:0] ek;
                 automatic integer k;
                 ptmp[pn] = b;
                 pn = pn + 4'd1;
                 pr = pr - 16'd1;
-                if (pn == 4'd8 || is_last) begin
+                if (pn == 4'(KEEP_W) || is_last) begin
                   ed = '0;
                   ek = '0;
-                  for (k = 0; k < 8; k++) begin
+                  for (k = 0; k < KEEP_W; k++) begin
                     if (k < pn) begin
                       ed[k*8 +: 8] = ptmp[k];
                       ek[k] = 1'b1;
@@ -299,10 +303,10 @@ module udp_strip
                        (hdr_just_done && why == 2'd0)) begin
             // Flush residual pend (partial last beat not already emitted)
             if (pn != 4'd0) begin
-              automatic logic [63:0] ed = '0;
-              automatic logic [7:0]  ek = '0;
+              automatic logic [DATA_W-1:0] ed = '0;
+              automatic logic [KEEP_W-1:0] ek = '0;
               automatic integer k;
-              for (k = 0; k < 8; k++) begin
+              for (k = 0; k < KEEP_W; k++) begin
                 if (k < pn) begin
                   ed[k*8 +: 8] = ptmp[k];
                   ek[k] = 1'b1;
@@ -337,7 +341,7 @@ module udp_strip
         tuser_q   <= tu;
         for (i = 0; i < HDR_LEN; i++)
           hdr_q[i] <= htmp[i];
-        for (i = 0; i < 8; i++)
+        for (i = 0; i < KEEP_W; i++)
           pend_q[i] <= ptmp[i];
       end
 

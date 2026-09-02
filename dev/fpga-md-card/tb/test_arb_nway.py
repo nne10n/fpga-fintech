@@ -29,6 +29,7 @@ async def reset_arb(dut, cycles: int = 5):
         getattr(dut, f"{prefix}_tdata").value = 0
         getattr(dut, f"{prefix}_tvalid").value = 0
         getattr(dut, f"{prefix}_tlast").value = 0
+        getattr(dut, f"{prefix}_code").value = 0
     dut.m_event_tready.value = 1
     for _ in range(cycles):
         await RisingEdge(dut.clk)
@@ -64,6 +65,7 @@ async def drive_port(dut, port: str, data: int, cycles_hold: int = 1):
     tlast = getattr(dut, f"s_{port}_tlast")
     tready = getattr(dut, f"s_{port}_tready")
     tdata.value = data
+    getattr(dut, f"s_{port}_code").value = 0
     tvalid.value = 1
     tlast.value = 1
     for _ in range(1000):
@@ -80,6 +82,7 @@ async def drive_two_same_cycle(dut, port_a: str, data_a: int, port_b: str, data_
     """Assert two ports valid on the same cycle (A-first arb test)."""
     for port, data in ((port_a, data_a), (port_b, data_b)):
         getattr(dut, f"s_{port}_tdata").value = data
+        getattr(dut, f"s_{port}_code").value = 0
         getattr(dut, f"s_{port}_tvalid").value = 1
         getattr(dut, f"s_{port}_tlast").value = 1
     # Hold until both accepted (may be sequential across cycles via skid)
