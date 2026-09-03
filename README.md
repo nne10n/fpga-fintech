@@ -13,6 +13,8 @@
 | AI Agent 在 FPGA 开发与验证 | [`research/ai-agent-fpga-verification/`](research/ai-agent-fpga-verification/) | 可复制闭环，不是端到端自治签核 |
 | Siemens vs Synopsys 仿真工具 | [`research/eda-sim-siemens-synopsys/`](research/eda-sim-siemens-synopsys/) | 数字功能仿真对比笔记 |
 | 券商 FPGA 行情卡（UL3524 / X1100） | [`research/md-card-ul3524/`](research/md-card-ul3524/) | 规格、模块设计、订单簿/L0/L1 DDR、X1100 适配与 Yusur NDPP 计划 |
+| FPGA / 数字 IC 可复制 Skill 盘点 | [`research/fpga-skill-inventory/`](research/fpga-skill-inventory/) | Cursor/Agent Skills 可借鉴来源与缺口 |
+| 可粘贴 IP/可复用模块登记册调研 | [`research/ip-module-registry/`](research/ip-module-registry/) | catalog 方案：index + modules md，供 RTL 例化 |
 
 每个主题里 `调研汇报.md` / `调研汇报-初稿.md` / `规格-v1.md` 是中文稿，`briefing.md` 是对应英文底稿（有则）。
 

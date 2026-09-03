@@ -140,35 +140,43 @@ module md_rx_top_x1100
   logic [31:0] st_filt [0:1];
 
   eth_tuser_t a_tu_fix, b_tu_fix;
+  // udp_strip o_dbg_* intentionally unused at this layer (house-rule keep ports)
+  logic [2:0] strip_dbg_cs_nc   [0:1];
+  logic       strip_dbg_err_nc  [0:1];
+  logic       strip_dbg_ovfl_nc [0:1];
   always_comb begin
     a_tu_fix = s_axis_a_tuser; a_tu_fix.port_id = 3'(NDPP_P_A);
     b_tu_fix = s_axis_b_tuser; b_tu_fix.port_id = 3'(NDPP_P_B);
   end
 
+  // Eth/IPv4/UDP cut-through strip, 32b port A. o_dbg_* left open on purpose.
   udp_strip #(.DATA_W(NDPP_AXIS_W)) u_strip_a (
-    .clk(clk), .rst_n(rst_n),
-    .cfg_dst_mac(cfg_dst_mac), .cfg_dst_ip(cfg_dst_ip), .cfg_udp_dport(cfg_udp_dport),
-    .s_axis_tdata(s_axis_a_tdata), .s_axis_tkeep(s_axis_a_tkeep),
-    .s_axis_tvalid(s_axis_a_tvalid), .s_axis_tlast(s_axis_a_tlast),
-    .s_axis_tready(s_axis_a_tready), .s_axis_tuser(a_tu_fix),
-    .m_axis_tdata(pay_tdata[0]), .m_axis_tkeep(pay_tkeep[0]),
-    .m_axis_tvalid(pay_tvalid[0]), .m_axis_tlast(pay_tlast[0]),
-    .m_axis_tready(pay_tready[0]), .m_axis_tuser(pay_tuser[0]),
-    .drop_not_udp(st_nudp[0]), .drop_opt(st_opt[0]),
-    .drop_filter(st_filt[0]), .frames_ok(st_ok[0])
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s_axis_a_tdata), .i_s_tkeep(s_axis_a_tkeep),   // 握手
+    .i_s_tvalid(s_axis_a_tvalid), .i_s_tlast(s_axis_a_tlast),
+    .o_s_tready(s_axis_a_tready), .i_s_tuser(a_tu_fix),
+    .o_m_tdata(pay_tdata[0]), .o_m_tkeep(pay_tkeep[0]),       // 握手
+    .o_m_tvalid(pay_tvalid[0]), .o_m_tlast(pay_tlast[0]),
+    .i_m_tready(pay_tready[0]), .o_m_tuser(pay_tuser[0]),
+    .o_drop_not_udp(st_nudp[0]), .o_drop_opt(st_opt[0]),
+    .o_drop_filter(st_filt[0]), .o_frames_ok(st_ok[0]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[0]), .o_dbg_err_sticky(strip_dbg_err_nc[0]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[0])
   );
 
+  // Eth/IPv4/UDP cut-through strip, 32b port B. o_dbg_* left open on purpose.
   udp_strip #(.DATA_W(NDPP_AXIS_W)) u_strip_b (
-    .clk(clk), .rst_n(rst_n),
-    .cfg_dst_mac(cfg_dst_mac), .cfg_dst_ip(cfg_dst_ip), .cfg_udp_dport(cfg_udp_dport),
-    .s_axis_tdata(s_axis_b_tdata), .s_axis_tkeep(s_axis_b_tkeep),
-    .s_axis_tvalid(s_axis_b_tvalid), .s_axis_tlast(s_axis_b_tlast),
-    .s_axis_tready(s_axis_b_tready), .s_axis_tuser(b_tu_fix),
-    .m_axis_tdata(pay_tdata[1]), .m_axis_tkeep(pay_tkeep[1]),
-    .m_axis_tvalid(pay_tvalid[1]), .m_axis_tlast(pay_tlast[1]),
-    .m_axis_tready(pay_tready[1]), .m_axis_tuser(pay_tuser[1]),
-    .drop_not_udp(st_nudp[1]), .drop_opt(st_opt[1]),
-    .drop_filter(st_filt[1]), .frames_ok(st_ok[1])
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s_axis_b_tdata), .i_s_tkeep(s_axis_b_tkeep),   // 握手
+    .i_s_tvalid(s_axis_b_tvalid), .i_s_tlast(s_axis_b_tlast),
+    .o_s_tready(s_axis_b_tready), .i_s_tuser(b_tu_fix),
+    .o_m_tdata(pay_tdata[1]), .o_m_tkeep(pay_tkeep[1]),       // 握手
+    .o_m_tvalid(pay_tvalid[1]), .o_m_tlast(pay_tlast[1]),
+    .i_m_tready(pay_tready[1]), .o_m_tuser(pay_tuser[1]),
+    .o_drop_not_udp(st_nudp[1]), .o_drop_opt(st_opt[1]),
+    .o_drop_filter(st_filt[1]), .o_frames_ok(st_ok[1]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[1]), .o_dbg_err_sticky(strip_dbg_err_nc[1]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[1])
   );
 
   // =========================================================================

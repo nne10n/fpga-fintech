@@ -141,6 +141,10 @@ module md_rx_top
 
   // Force port_id in tuser at strip input (TB may set any; top overrides)
   eth_tuser_t s0_tu_fix, s1_tu_fix, s2_tu_fix, s3_tu_fix;
+  // udp_strip o_dbg_* intentionally unused at this layer (house-rule keep ports)
+  logic [2:0] strip_dbg_cs_nc   [0:3];
+  logic       strip_dbg_err_nc  [0:3];
+  logic       strip_dbg_ovfl_nc [0:3];
   always_comb begin
     s0_tu_fix = s0_tuser; s0_tu_fix.port_id = 3'(P_SSE_A);
     s1_tu_fix = s1_tuser; s1_tu_fix.port_id = 3'(P_SSE_B);
@@ -148,41 +152,49 @@ module md_rx_top
     s3_tu_fix = s3_tuser; s3_tu_fix.port_id = 3'(P_SZSE_B);
   end
 
+  // Eth/IPv4/UDP cut-through strip, port 0 (SSE_A). o_dbg_* left open on purpose.
   udp_strip u_strip0 (
-    .clk(clk), .rst_n(rst_n),
-    .cfg_dst_mac(cfg_dst_mac), .cfg_dst_ip(cfg_dst_ip), .cfg_udp_dport(cfg_udp_dport),
-    .s_axis_tdata(s0_tdata), .s_axis_tkeep(s0_tkeep), .s_axis_tvalid(s0_tvalid),
-    .s_axis_tlast(s0_tlast), .s_axis_tready(s0_tready), .s_axis_tuser(s0_tu_fix),
-    .m_axis_tdata(pay_tdata[0]), .m_axis_tkeep(pay_tkeep[0]), .m_axis_tvalid(pay_tvalid[0]),
-    .m_axis_tlast(pay_tlast[0]), .m_axis_tready(pay_tready[0]), .m_axis_tuser(pay_tuser[0]),
-    .drop_not_udp(st_nudp[0]), .drop_opt(st_opt[0]), .drop_filter(st_filt[0]), .frames_ok(st_ok[0])
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s0_tdata), .i_s_tkeep(s0_tkeep), .i_s_tvalid(s0_tvalid), // 握手
+    .i_s_tlast(s0_tlast), .o_s_tready(s0_tready), .i_s_tuser(s0_tu_fix),
+    .o_m_tdata(pay_tdata[0]), .o_m_tkeep(pay_tkeep[0]), .o_m_tvalid(pay_tvalid[0]), // 握手
+    .o_m_tlast(pay_tlast[0]), .i_m_tready(pay_tready[0]), .o_m_tuser(pay_tuser[0]),
+    .o_drop_not_udp(st_nudp[0]), .o_drop_opt(st_opt[0]), .o_drop_filter(st_filt[0]), .o_frames_ok(st_ok[0]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[0]), .o_dbg_err_sticky(strip_dbg_err_nc[0]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[0])
   );
+  // Eth/IPv4/UDP cut-through strip, port 1 (SSE_B). o_dbg_* left open on purpose.
   udp_strip u_strip1 (
-    .clk(clk), .rst_n(rst_n),
-    .cfg_dst_mac(cfg_dst_mac), .cfg_dst_ip(cfg_dst_ip), .cfg_udp_dport(cfg_udp_dport),
-    .s_axis_tdata(s1_tdata), .s_axis_tkeep(s1_tkeep), .s_axis_tvalid(s1_tvalid),
-    .s_axis_tlast(s1_tlast), .s_axis_tready(s1_tready), .s_axis_tuser(s1_tu_fix),
-    .m_axis_tdata(pay_tdata[1]), .m_axis_tkeep(pay_tkeep[1]), .m_axis_tvalid(pay_tvalid[1]),
-    .m_axis_tlast(pay_tlast[1]), .m_axis_tready(pay_tready[1]), .m_axis_tuser(pay_tuser[1]),
-    .drop_not_udp(st_nudp[1]), .drop_opt(st_opt[1]), .drop_filter(st_filt[1]), .frames_ok(st_ok[1])
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s1_tdata), .i_s_tkeep(s1_tkeep), .i_s_tvalid(s1_tvalid), // 握手
+    .i_s_tlast(s1_tlast), .o_s_tready(s1_tready), .i_s_tuser(s1_tu_fix),
+    .o_m_tdata(pay_tdata[1]), .o_m_tkeep(pay_tkeep[1]), .o_m_tvalid(pay_tvalid[1]), // 握手
+    .o_m_tlast(pay_tlast[1]), .i_m_tready(pay_tready[1]), .o_m_tuser(pay_tuser[1]),
+    .o_drop_not_udp(st_nudp[1]), .o_drop_opt(st_opt[1]), .o_drop_filter(st_filt[1]), .o_frames_ok(st_ok[1]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[1]), .o_dbg_err_sticky(strip_dbg_err_nc[1]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[1])
   );
+  // Eth/IPv4/UDP cut-through strip, port 2 (SZSE_A). o_dbg_* left open on purpose.
   udp_strip u_strip2 (
-    .clk(clk), .rst_n(rst_n),
-    .cfg_dst_mac(cfg_dst_mac), .cfg_dst_ip(cfg_dst_ip), .cfg_udp_dport(cfg_udp_dport),
-    .s_axis_tdata(s2_tdata), .s_axis_tkeep(s2_tkeep), .s_axis_tvalid(s2_tvalid),
-    .s_axis_tlast(s2_tlast), .s_axis_tready(s2_tready), .s_axis_tuser(s2_tu_fix),
-    .m_axis_tdata(pay_tdata[2]), .m_axis_tkeep(pay_tkeep[2]), .m_axis_tvalid(pay_tvalid[2]),
-    .m_axis_tlast(pay_tlast[2]), .m_axis_tready(pay_tready[2]), .m_axis_tuser(pay_tuser[2]),
-    .drop_not_udp(st_nudp[2]), .drop_opt(st_opt[2]), .drop_filter(st_filt[2]), .frames_ok(st_ok[2])
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s2_tdata), .i_s_tkeep(s2_tkeep), .i_s_tvalid(s2_tvalid), // 握手
+    .i_s_tlast(s2_tlast), .o_s_tready(s2_tready), .i_s_tuser(s2_tu_fix),
+    .o_m_tdata(pay_tdata[2]), .o_m_tkeep(pay_tkeep[2]), .o_m_tvalid(pay_tvalid[2]), // 握手
+    .o_m_tlast(pay_tlast[2]), .i_m_tready(pay_tready[2]), .o_m_tuser(pay_tuser[2]),
+    .o_drop_not_udp(st_nudp[2]), .o_drop_opt(st_opt[2]), .o_drop_filter(st_filt[2]), .o_frames_ok(st_ok[2]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[2]), .o_dbg_err_sticky(strip_dbg_err_nc[2]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[2])
   );
+  // Eth/IPv4/UDP cut-through strip, port 3 (SZSE_B). o_dbg_* left open on purpose.
   udp_strip u_strip3 (
-    .clk(clk), .rst_n(rst_n),
-    .cfg_dst_mac(cfg_dst_mac), .cfg_dst_ip(cfg_dst_ip), .cfg_udp_dport(cfg_udp_dport),
-    .s_axis_tdata(s3_tdata), .s_axis_tkeep(s3_tkeep), .s_axis_tvalid(s3_tvalid),
-    .s_axis_tlast(s3_tlast), .s_axis_tready(s3_tready), .s_axis_tuser(s3_tu_fix),
-    .m_axis_tdata(pay_tdata[3]), .m_axis_tkeep(pay_tkeep[3]), .m_axis_tvalid(pay_tvalid[3]),
-    .m_axis_tlast(pay_tlast[3]), .m_axis_tready(pay_tready[3]), .m_axis_tuser(pay_tuser[3]),
-    .drop_not_udp(st_nudp[3]), .drop_opt(st_opt[3]), .drop_filter(st_filt[3]), .frames_ok(st_ok[3])
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s3_tdata), .i_s_tkeep(s3_tkeep), .i_s_tvalid(s3_tvalid), // 握手
+    .i_s_tlast(s3_tlast), .o_s_tready(s3_tready), .i_s_tuser(s3_tu_fix),
+    .o_m_tdata(pay_tdata[3]), .o_m_tkeep(pay_tkeep[3]), .o_m_tvalid(pay_tvalid[3]), // 握手
+    .o_m_tlast(pay_tlast[3]), .i_m_tready(pay_tready[3]), .o_m_tuser(pay_tuser[3]),
+    .o_drop_not_udp(st_nudp[3]), .o_drop_opt(st_opt[3]), .o_drop_filter(st_filt[3]), .o_frames_ok(st_ok[3]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[3]), .o_dbg_err_sticky(strip_dbg_err_nc[3]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[3])
   );
 
   // =========================================================================
