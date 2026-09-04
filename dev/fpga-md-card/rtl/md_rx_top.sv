@@ -145,6 +145,10 @@ module md_rx_top
   logic [2:0] strip_dbg_cs_nc   [0:3];
   logic       strip_dbg_err_nc  [0:3];
   logic       strip_dbg_ovfl_nc [0:3];
+  logic [1:0] fast_dbg_cs_nc    [0:1];
+  logic       fast_dbg_err_nc   [0:1];
+  logic       mcast_dbg_cs_nc;
+  logic       mcast_dbg_err_nc;
   always_comb begin
     s0_tu_fix = s0_tuser; s0_tu_fix.port_id = 3'(P_SSE_A);
     s1_tu_fix = s1_tuser; s1_tu_fix.port_id = 3'(P_SSE_B);
@@ -154,47 +158,111 @@ module md_rx_top
 
   // Eth/IPv4/UDP cut-through strip, port 0 (SSE_A). o_dbg_* left open on purpose.
   udp_strip u_strip0 (
-    .clk(clk), .rst_n(rst_n),                                 // 电平
-    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
-    .i_s_tdata(s0_tdata), .i_s_tkeep(s0_tkeep), .i_s_tvalid(s0_tvalid), // 握手
-    .i_s_tlast(s0_tlast), .o_s_tready(s0_tready), .i_s_tuser(s0_tu_fix),
-    .o_m_tdata(pay_tdata[0]), .o_m_tkeep(pay_tkeep[0]), .o_m_tvalid(pay_tvalid[0]), // 握手
-    .o_m_tlast(pay_tlast[0]), .i_m_tready(pay_tready[0]), .o_m_tuser(pay_tuser[0]),
-    .o_drop_not_udp(st_nudp[0]), .o_drop_opt(st_opt[0]), .o_drop_filter(st_filt[0]), .o_frames_ok(st_ok[0]),
-    .o_dbg_cs_state(strip_dbg_cs_nc[0]), .o_dbg_err_sticky(strip_dbg_err_nc[0]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[0])
+    .sys_clk(clk), // 时钟
+    .sys_rst_n(rst_n), // 复位(异步低)
+    .i_cfg_dst_mac(cfg_dst_mac), // 电平
+    .i_cfg_dst_ip(cfg_dst_ip), // 电平
+    .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s0_tdata), // 握手
+    .i_s_tkeep(s0_tkeep), // 握手
+    .i_s_tvalid(s0_tvalid), // 握手
+    .i_s_tlast(s0_tlast), // 握手
+    .o_s_tready(s0_tready), // 握手
+    .i_s_tuser(s0_tu_fix), // 握手
+    .o_m_tdata(pay_tdata[0]), // 握手
+    .o_m_tkeep(pay_tkeep[0]), // 握手
+    .o_m_tvalid(pay_tvalid[0]), // 握手
+    .o_m_tlast(pay_tlast[0]), // 握手
+    .i_m_tready(pay_tready[0]), // 握手
+    .o_m_tuser(pay_tuser[0]), // 握手
+    .o_drop_not_udp(st_nudp[0]), // 电平
+    .o_drop_opt(st_opt[0]), // 电平
+    .o_drop_filter(st_filt[0]), // 电平
+    .o_frames_ok(st_ok[0]), // 电平
+    .o_dbg_cs_state(strip_dbg_cs_nc[0]), // sticky
+    .o_dbg_err_sticky(strip_dbg_err_nc[0]), // sticky
+    .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[0]) // sticky
   );
   // Eth/IPv4/UDP cut-through strip, port 1 (SSE_B). o_dbg_* left open on purpose.
   udp_strip u_strip1 (
-    .clk(clk), .rst_n(rst_n),                                 // 电平
-    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
-    .i_s_tdata(s1_tdata), .i_s_tkeep(s1_tkeep), .i_s_tvalid(s1_tvalid), // 握手
-    .i_s_tlast(s1_tlast), .o_s_tready(s1_tready), .i_s_tuser(s1_tu_fix),
-    .o_m_tdata(pay_tdata[1]), .o_m_tkeep(pay_tkeep[1]), .o_m_tvalid(pay_tvalid[1]), // 握手
-    .o_m_tlast(pay_tlast[1]), .i_m_tready(pay_tready[1]), .o_m_tuser(pay_tuser[1]),
-    .o_drop_not_udp(st_nudp[1]), .o_drop_opt(st_opt[1]), .o_drop_filter(st_filt[1]), .o_frames_ok(st_ok[1]),
-    .o_dbg_cs_state(strip_dbg_cs_nc[1]), .o_dbg_err_sticky(strip_dbg_err_nc[1]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[1])
+    .sys_clk(clk), // 时钟
+    .sys_rst_n(rst_n), // 复位(异步低)
+    .i_cfg_dst_mac(cfg_dst_mac), // 电平
+    .i_cfg_dst_ip(cfg_dst_ip), // 电平
+    .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s1_tdata), // 握手
+    .i_s_tkeep(s1_tkeep), // 握手
+    .i_s_tvalid(s1_tvalid), // 握手
+    .i_s_tlast(s1_tlast), // 握手
+    .o_s_tready(s1_tready), // 握手
+    .i_s_tuser(s1_tu_fix), // 握手
+    .o_m_tdata(pay_tdata[1]), // 握手
+    .o_m_tkeep(pay_tkeep[1]), // 握手
+    .o_m_tvalid(pay_tvalid[1]), // 握手
+    .o_m_tlast(pay_tlast[1]), // 握手
+    .i_m_tready(pay_tready[1]), // 握手
+    .o_m_tuser(pay_tuser[1]), // 握手
+    .o_drop_not_udp(st_nudp[1]), // 电平
+    .o_drop_opt(st_opt[1]), // 电平
+    .o_drop_filter(st_filt[1]), // 电平
+    .o_frames_ok(st_ok[1]), // 电平
+    .o_dbg_cs_state(strip_dbg_cs_nc[1]), // sticky
+    .o_dbg_err_sticky(strip_dbg_err_nc[1]), // sticky
+    .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[1]) // sticky
   );
   // Eth/IPv4/UDP cut-through strip, port 2 (SZSE_A). o_dbg_* left open on purpose.
   udp_strip u_strip2 (
-    .clk(clk), .rst_n(rst_n),                                 // 电平
-    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
-    .i_s_tdata(s2_tdata), .i_s_tkeep(s2_tkeep), .i_s_tvalid(s2_tvalid), // 握手
-    .i_s_tlast(s2_tlast), .o_s_tready(s2_tready), .i_s_tuser(s2_tu_fix),
-    .o_m_tdata(pay_tdata[2]), .o_m_tkeep(pay_tkeep[2]), .o_m_tvalid(pay_tvalid[2]), // 握手
-    .o_m_tlast(pay_tlast[2]), .i_m_tready(pay_tready[2]), .o_m_tuser(pay_tuser[2]),
-    .o_drop_not_udp(st_nudp[2]), .o_drop_opt(st_opt[2]), .o_drop_filter(st_filt[2]), .o_frames_ok(st_ok[2]),
-    .o_dbg_cs_state(strip_dbg_cs_nc[2]), .o_dbg_err_sticky(strip_dbg_err_nc[2]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[2])
+    .sys_clk(clk), // 时钟
+    .sys_rst_n(rst_n), // 复位(异步低)
+    .i_cfg_dst_mac(cfg_dst_mac), // 电平
+    .i_cfg_dst_ip(cfg_dst_ip), // 电平
+    .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s2_tdata), // 握手
+    .i_s_tkeep(s2_tkeep), // 握手
+    .i_s_tvalid(s2_tvalid), // 握手
+    .i_s_tlast(s2_tlast), // 握手
+    .o_s_tready(s2_tready), // 握手
+    .i_s_tuser(s2_tu_fix), // 握手
+    .o_m_tdata(pay_tdata[2]), // 握手
+    .o_m_tkeep(pay_tkeep[2]), // 握手
+    .o_m_tvalid(pay_tvalid[2]), // 握手
+    .o_m_tlast(pay_tlast[2]), // 握手
+    .i_m_tready(pay_tready[2]), // 握手
+    .o_m_tuser(pay_tuser[2]), // 握手
+    .o_drop_not_udp(st_nudp[2]), // 电平
+    .o_drop_opt(st_opt[2]), // 电平
+    .o_drop_filter(st_filt[2]), // 电平
+    .o_frames_ok(st_ok[2]), // 电平
+    .o_dbg_cs_state(strip_dbg_cs_nc[2]), // sticky
+    .o_dbg_err_sticky(strip_dbg_err_nc[2]), // sticky
+    .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[2]) // sticky
   );
   // Eth/IPv4/UDP cut-through strip, port 3 (SZSE_B). o_dbg_* left open on purpose.
   udp_strip u_strip3 (
-    .clk(clk), .rst_n(rst_n),                                 // 电平
-    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
-    .i_s_tdata(s3_tdata), .i_s_tkeep(s3_tkeep), .i_s_tvalid(s3_tvalid), // 握手
-    .i_s_tlast(s3_tlast), .o_s_tready(s3_tready), .i_s_tuser(s3_tu_fix),
-    .o_m_tdata(pay_tdata[3]), .o_m_tkeep(pay_tkeep[3]), .o_m_tvalid(pay_tvalid[3]), // 握手
-    .o_m_tlast(pay_tlast[3]), .i_m_tready(pay_tready[3]), .o_m_tuser(pay_tuser[3]),
-    .o_drop_not_udp(st_nudp[3]), .o_drop_opt(st_opt[3]), .o_drop_filter(st_filt[3]), .o_frames_ok(st_ok[3]),
-    .o_dbg_cs_state(strip_dbg_cs_nc[3]), .o_dbg_err_sticky(strip_dbg_err_nc[3]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[3])
+    .sys_clk(clk), // 时钟
+    .sys_rst_n(rst_n), // 复位(异步低)
+    .i_cfg_dst_mac(cfg_dst_mac), // 电平
+    .i_cfg_dst_ip(cfg_dst_ip), // 电平
+    .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s3_tdata), // 握手
+    .i_s_tkeep(s3_tkeep), // 握手
+    .i_s_tvalid(s3_tvalid), // 握手
+    .i_s_tlast(s3_tlast), // 握手
+    .o_s_tready(s3_tready), // 握手
+    .i_s_tuser(s3_tu_fix), // 握手
+    .o_m_tdata(pay_tdata[3]), // 握手
+    .o_m_tkeep(pay_tkeep[3]), // 握手
+    .o_m_tvalid(pay_tvalid[3]), // 握手
+    .o_m_tlast(pay_tlast[3]), // 握手
+    .i_m_tready(pay_tready[3]), // 握手
+    .o_m_tuser(pay_tuser[3]), // 握手
+    .o_drop_not_udp(st_nudp[3]), // 电平
+    .o_drop_opt(st_opt[3]), // 电平
+    .o_drop_filter(st_filt[3]), // 电平
+    .o_frames_ok(st_ok[3]), // 电平
+    .o_dbg_cs_state(strip_dbg_cs_nc[3]), // sticky
+    .o_dbg_err_sticky(strip_dbg_err_nc[3]), // sticky
+    .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[3]) // sticky
   );
 
   // =========================================================================
@@ -255,23 +323,45 @@ module md_rx_top
     .m_event_tlast(bin_tlast[1]), .m_event_tready(bin_tready[1]),
     .m_code(bin_code[1]), .msg_ok(bin_ok[1]), .msg_bad(bin_bad[1])
   );
+  // Synthetic FAST decoder, SSE A. o_dbg_* left open on purpose.
   dec_sse_fast u_dec_sse_fast_a (
-    .clk(clk), .rst_n(rst_n),
-    .s_axis_tdata(pay_tdata[0]), .s_axis_tkeep(pay_tkeep[0]),
-    .s_axis_tvalid(pay_v_fast[0]), .s_axis_tlast(pay_tlast[0]),
-    .s_axis_tready(fast_s_rdy[0]), .s_axis_tuser(pay_tuser[0]),
-    .m_event_tdata(fast_tdata[0]), .m_event_tvalid(fast_tvalid[0]),
-    .m_event_tlast(fast_tlast[0]), .m_event_tready(fast_tready[0]),
-    .m_code(fast_code[0]), .msg_ok(fast_ok[0]), .msg_bad(fast_bad[0])
+    .sys_clk(clk), // 时钟
+    .sys_rst_n(rst_n), // 复位(异步低)
+    .i_s_tdata(pay_tdata[0]), // 握手
+    .i_s_tkeep(pay_tkeep[0]), // 握手
+    .i_s_tvalid(pay_v_fast[0]), // 握手
+    .i_s_tlast(pay_tlast[0]), // 握手
+    .o_s_tready(fast_s_rdy[0]), // 握手
+    .i_s_tuser(pay_tuser[0]), // 握手
+    .o_m_event_tdata(fast_tdata[0]), // 握手
+    .o_m_event_tvalid(fast_tvalid[0]), // 握手
+    .o_m_event_tlast(fast_tlast[0]), // 握手
+    .i_m_event_tready(fast_tready[0]), // 握手
+    .o_m_code(fast_code[0]), // 电平
+    .o_msg_ok(fast_ok[0]), // 电平
+    .o_msg_bad(fast_bad[0]), // 电平
+    .o_dbg_cs_state(fast_dbg_cs_nc[0]), // sticky
+    .o_dbg_err_sticky(fast_dbg_err_nc[0]) // sticky
   );
+  // Synthetic FAST decoder, SSE B. o_dbg_* left open on purpose.
   dec_sse_fast u_dec_sse_fast_b (
-    .clk(clk), .rst_n(rst_n),
-    .s_axis_tdata(pay_tdata[1]), .s_axis_tkeep(pay_tkeep[1]),
-    .s_axis_tvalid(pay_v_fast[1]), .s_axis_tlast(pay_tlast[1]),
-    .s_axis_tready(fast_s_rdy[1]), .s_axis_tuser(pay_tuser[1]),
-    .m_event_tdata(fast_tdata[1]), .m_event_tvalid(fast_tvalid[1]),
-    .m_event_tlast(fast_tlast[1]), .m_event_tready(fast_tready[1]),
-    .m_code(fast_code[1]), .msg_ok(fast_ok[1]), .msg_bad(fast_bad[1])
+    .sys_clk(clk), // 时钟
+    .sys_rst_n(rst_n), // 复位(异步低)
+    .i_s_tdata(pay_tdata[1]), // 握手
+    .i_s_tkeep(pay_tkeep[1]), // 握手
+    .i_s_tvalid(pay_v_fast[1]), // 握手
+    .i_s_tlast(pay_tlast[1]), // 握手
+    .o_s_tready(fast_s_rdy[1]), // 握手
+    .i_s_tuser(pay_tuser[1]), // 握手
+    .o_m_event_tdata(fast_tdata[1]), // 握手
+    .o_m_event_tvalid(fast_tvalid[1]), // 握手
+    .o_m_event_tlast(fast_tlast[1]), // 握手
+    .i_m_event_tready(fast_tready[1]), // 握手
+    .o_m_code(fast_code[1]), // 电平
+    .o_msg_ok(fast_ok[1]), // 电平
+    .o_msg_bad(fast_bad[1]), // 电平
+    .o_dbg_cs_state(fast_dbg_cs_nc[1]), // sticky
+    .o_dbg_err_sticky(fast_dbg_err_nc[1]) // sticky
   );
 
   // Output mux + ready fanout
@@ -408,20 +498,36 @@ module md_rx_top
   logic [31:0] mcast_tx_c, mcast_df, mcast_dr;
   logic [31:0] dma_tx_c, dma_df;
 
+  // Per-client multicast TX (N=1). o_dbg_* left open on purpose.
   mcast_eng #(.CLIENT_ID(0)) u_mcast (
-    .clk(clk), .rst_n(rst_n),
-    .s_event_tdata(cam_tdata), .s_event_tvalid(cam_tvalid),
-    .s_event_tlast(cam_tlast), .s_event_tready(mcast_ev_ready),
-    .m_axis_tdata(m_mcast_tdata), .m_axis_tkeep(m_mcast_tkeep),
-    .m_axis_tvalid(m_mcast_tvalid), .m_axis_tlast(m_mcast_tlast),
-    .m_axis_tready(m_mcast_tready),
-    .cfg_src_mac(cfg_mcast_src_mac), .cfg_dst_mac(cfg_mcast_dst_mac),
-    .cfg_src_ip(cfg_mcast_src_ip), .cfg_dst_ip(cfg_mcast_dst_ip),
-    .cfg_udp_sport(cfg_mcast_udp_sport), .cfg_udp_dport(cfg_mcast_udp_dport),
-    .cfg_ch_mask(cfg_ch_mask), .cfg_period(cfg_mcast_period),
-    .cfg_refill(cfg_mcast_refill),
-    .filt_we(filt_we), .filt_addr(filt_addr), .filt_bit(filt_bit),
-    .tx_ok(mcast_tx_c), .drop_filt(mcast_df), .drop_rate(mcast_dr)
+    .sys_clk(clk), // 时钟
+    .sys_rst_n(rst_n), // 复位(异步低)
+    .i_s_event_tdata(cam_tdata), // 握手
+    .i_s_event_tvalid(cam_tvalid), // 握手
+    .i_s_event_tlast(cam_tlast), // 握手
+    .o_s_event_tready(mcast_ev_ready), // 握手
+    .o_m_tdata(m_mcast_tdata), // 握手
+    .o_m_tkeep(m_mcast_tkeep), // 握手
+    .o_m_tvalid(m_mcast_tvalid), // 握手
+    .o_m_tlast(m_mcast_tlast), // 握手
+    .i_m_tready(m_mcast_tready), // 握手
+    .i_cfg_src_mac(cfg_mcast_src_mac), // 电平
+    .i_cfg_dst_mac(cfg_mcast_dst_mac), // 电平
+    .i_cfg_src_ip(cfg_mcast_src_ip), // 电平
+    .i_cfg_dst_ip(cfg_mcast_dst_ip), // 电平
+    .i_cfg_udp_sport(cfg_mcast_udp_sport), // 电平
+    .i_cfg_udp_dport(cfg_mcast_udp_dport), // 电平
+    .i_cfg_ch_mask(cfg_ch_mask), // 电平
+    .i_cfg_period(cfg_mcast_period), // 电平
+    .i_cfg_refill(cfg_mcast_refill), // 电平
+    .i_filt_we(filt_we), // 脉冲
+    .i_filt_addr(filt_addr), // 电平
+    .i_filt_bit(filt_bit), // 电平
+    .o_tx_ok(mcast_tx_c), // 电平
+    .o_drop_filt(mcast_df), // 电平
+    .o_drop_rate(mcast_dr), // 电平
+    .o_dbg_cs_state(mcast_dbg_cs_nc), // sticky
+    .o_dbg_err_sticky(mcast_dbg_err_nc) // sticky
   );
 
   dma_pack u_dma (

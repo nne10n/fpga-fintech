@@ -12,51 +12,51 @@
 //         No VLAN, no FCS. Store-and-forward one frame.
 // -----------------------------------------------------------------------------
 `timescale 1ns / 1ps
+`default_nettype none
 
 module mcast_eng
   import md_pkg::*;
 #(
   parameter int CLIENT_ID = 0
 ) (
-  input  logic         clk,
-  input  logic         rst_n,
-
-  input  logic [511:0] s_event_tdata,
-  input  logic         s_event_tvalid,
-  input  logic         s_event_tlast,
-  output logic         s_event_tready,
-
-  output logic [63:0]  m_axis_tdata,
-  output logic [7:0]   m_axis_tkeep,
-  output logic         m_axis_tvalid,
-  output logic         m_axis_tlast,
-  input  logic         m_axis_tready,
-
-  input  logic [47:0]  cfg_src_mac,
-  input  logic [47:0]  cfg_dst_mac,
-  input  logic [31:0]  cfg_src_ip,
-  input  logic [31:0]  cfg_dst_ip,
-  input  logic [15:0]  cfg_udp_sport,
-  input  logic [15:0]  cfg_udp_dport,
-  input  logic [7:0]   cfg_ch_mask,
-  input  logic [15:0]  cfg_period,
-  input  logic [15:0]  cfg_refill,
-
-  input  logic         filt_we,
-  input  logic [12:0]  filt_addr,
-  input  logic         filt_bit,
-
-  output logic [31:0]  tx_ok,
-  output logic [31:0]  drop_filt,
-  output logic [31:0]  drop_rate
+  input  logic         sys_clk,
+  /* verilator lint_off SYNCASYNCNET */
+  input  logic         sys_rst_n,
+  /* verilator lint_on SYNCASYNCNET */
+  input  logic [511:0] i_s_event_tdata,
+  input  logic         i_s_event_tvalid,
+  input  logic         i_s_event_tlast,
+  output logic         o_s_event_tready,
+  output logic [63:0]  o_m_tdata,
+  output logic [7:0]   o_m_tkeep,
+  output logic         o_m_tvalid,
+  output logic         o_m_tlast,
+  input  logic         i_m_tready,
+  input  logic [47:0]  i_cfg_src_mac,
+  input  logic [47:0]  i_cfg_dst_mac,
+  input  logic [31:0]  i_cfg_src_ip,
+  input  logic [31:0]  i_cfg_dst_ip,
+  input  logic [15:0]  i_cfg_udp_sport,
+  input  logic [15:0]  i_cfg_udp_dport,
+  input  logic [7:0]   i_cfg_ch_mask,
+  input  logic [15:0]  i_cfg_period,
+  input  logic [15:0]  i_cfg_refill,
+  input  logic         i_filt_we,
+  input  logic [12:0]  i_filt_addr,
+  input  logic         i_filt_bit,
+  output logic [31:0]  o_tx_ok,
+  output logic [31:0]  o_drop_filt,
+  output logic [31:0]  o_drop_rate,
+  (* keep = "true" *) output logic o_dbg_cs_state,
+  (* keep = "true" *) output logic o_dbg_err_sticky
 );
 
-  logic unused_cid;
-  logic unused_tlast;
-  assign unused_cid   = (CLIENT_ID == 0) ? 1'b0 : 1'b1;
-  assign unused_tlast = s_event_tlast;
+  logic w_unused_cid;
+  logic w_unused_tlast;
+  assign w_unused_cid   = (CLIENT_ID == 0) ? 1'b0 : 1'b1;
+  assign w_unused_tlast = i_s_event_tlast;
 
-  assign s_event_tready = 1'b1;
+  assign o_s_event_tready = 1'b1;
 
   localparam int unsigned FRAME_BYTES = 106; // 14 eth + 20 ip + 8 udp + 64 pay
   localparam int unsigned N_BEATS     = 14;  // last beat: 2 bytes
@@ -95,138 +95,153 @@ module mcast_eng
     return ~sum[15:0];
   endfunction
 
-  // -------------------------------------------------------------------------
-  // Symbol enable bitmap
-  // -------------------------------------------------------------------------
-  logic filt_q [0:CAM_DEPTH-1];
-
-  integer fi;
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      for (fi = 0; fi < CAM_DEPTH; fi = fi + 1)
-        filt_q[fi] <= 1'b0;
-    end else if (filt_we) begin
-      filt_q[filt_addr] <= filt_bit;
-    end
-  end
-
-  // -------------------------------------------------------------------------
-  // Filter / rate / busy decision
-  // -------------------------------------------------------------------------
-  event_t ev_in;
-  assign ev_in = event_t'(s_event_tdata);
-
-  wire sym_ok  = (ev_in.symbol_id < 16'(CAM_DEPTH)) && filt_q[ev_in.symbol_id[12:0]];
-  wire ch_ok   = (ev_in.ch < 4'd8) &&
-                 ((cfg_ch_mask & (8'b1 << ev_in.ch[2:0])) != 8'd0);
-  wire filt_ok = sym_ok && ch_ok;
-
   typedef enum logic [0:0] {
     ST_IDLE = 1'b0,
     ST_TX   = 1'b1
   } state_e;
 
-  state_e      st_q;
-  logic [3:0]  beat_q;
-  logic [63:0] frame_q [0:N_BEATS-1];
-  logic [7:0]  keep_q  [0:N_BEATS-1];
+  state_e      cs_state;
+  state_e      ns_state;
+  logic        r_err_sticky;
+  logic [3:0]  r_beat;
+  logic [63:0] r_frame [0:N_BEATS-1];
+  logic [7:0]  r_keep  [0:N_BEATS-1];
+  logic        r_filt  [0:CAM_DEPTH-1];
+  logic [15:0] r_tokens;
+  logic [15:0] r_period_cnt;
+  logic [31:0] r_tx_ok;
+  logic [31:0] r_drop_filt;
+  logic [31:0] r_drop_rate;
 
-  wire busy = (st_q != ST_IDLE);
+  event_t w_ev_in;
+  logic   w_filt_ok;
+  logic   w_rate_unlimited;
+  logic   w_rate_ok;
+  logic   w_busy;
+  logic   w_accept;
 
-  logic [15:0] tokens_q;
-  logic [15:0] period_cnt_q;
-  wire rate_unlimited = (cfg_period == 16'd0);
-  wire rate_ok = rate_unlimited || (tokens_q != 16'd0);
+  assign w_ev_in          = event_t'(i_s_event_tdata);
+  assign w_filt_ok        = (w_ev_in.symbol_id < 16'(CAM_DEPTH))
+                            && r_filt[w_ev_in.symbol_id[12:0]]
+                            && (w_ev_in.ch < 4'd8)
+                            && ((i_cfg_ch_mask & (8'b1 << w_ev_in.ch[2:0])) != 8'd0);
+  assign w_rate_unlimited = (i_cfg_period == 16'd0);
+  assign w_rate_ok        = w_rate_unlimited || (r_tokens != 16'd0);
+  assign w_busy           = (cs_state != ST_IDLE);
+  assign w_accept         = i_s_event_tvalid && w_filt_ok && w_rate_ok && !w_busy;
 
-  wire accept_fire    = s_event_tvalid && filt_ok && rate_ok && !busy;
-  wire drop_filt_fire = s_event_tvalid && !filt_ok;
-  wire drop_rate_fire = s_event_tvalid && filt_ok && (!rate_ok || busy);
+  assign o_tx_ok          = r_tx_ok;
+  assign o_drop_filt      = r_drop_filt;
+  assign o_drop_rate      = r_drop_rate;
+  assign o_m_tvalid       = (cs_state == ST_TX);
+  assign o_m_tdata        = r_frame[r_beat];
+  assign o_m_tkeep        = r_keep[r_beat];
+  assign o_m_tlast        = (r_beat == 4'(N_BEATS - 1));
+  assign o_dbg_cs_state   = cs_state;
+  assign o_dbg_err_sticky = r_err_sticky;
 
-  // -------------------------------------------------------------------------
-  // Token bucket (refill then optional consume)
-  // -------------------------------------------------------------------------
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      tokens_q     <= 16'd0;
-      period_cnt_q <= 16'd0;
-    end else begin
-      logic [15:0] t_next;
-      logic [15:0] p_next;
-      t_next = tokens_q;
-      p_next = period_cnt_q;
+  // Register current FSM state.
+  // SPEC: module-design-v1.md §3.8
+  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+    if (!sys_rst_n)
+      cs_state <= ST_IDLE;
+    else
+      cs_state <= ns_state;
+  end
 
-      if (rate_unlimited) begin
-        p_next = 16'd0;
-        t_next = 16'hFFFF;
-      end else if (period_cnt_q >= (cfg_period - 16'd1)) begin
-        p_next = 16'd0;
-        t_next = sat_add16(t_next, cfg_refill);
-      end else begin
-        p_next = period_cnt_q + 16'd1;
+  // Select next FSM state from accept / last-beat handshake.
+  // SPEC: module-design-v1.md §3.8
+  always_comb begin
+    ns_state = cs_state;
+    case (cs_state)
+      ST_IDLE: begin
+        if (i_s_event_tvalid && w_filt_ok && w_rate_ok)
+          ns_state = ST_TX;
       end
+      ST_TX: begin
+        if (i_m_tready && (r_beat == 4'(N_BEATS - 1)))
+          ns_state = ST_IDLE;
+      end
+      default: ns_state = ST_IDLE;
+    endcase
+  end
 
-      if (accept_fire && !rate_unlimited && (t_next != 16'd0))
-        t_next = t_next - 16'd1;
-
-      tokens_q     <= t_next;
-      period_cnt_q <= p_next;
+  // Symbol enable bitmap (8192-bit filter).
+  // SPEC: module-design-v1.md §3.8
+  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+    automatic int fi;
+    if (!sys_rst_n) begin
+      for (fi = 0; fi < CAM_DEPTH; fi++)
+        r_filt[fi] <= 1'b0;
+    end else if (i_filt_we) begin
+      r_filt[i_filt_addr] <= i_filt_bit;
     end
   end
 
-  // -------------------------------------------------------------------------
-  // Counters + frame build + TX
-  // -------------------------------------------------------------------------
-  logic [31:0] c_tx_q, c_filt_q, c_rate_q;
-  assign tx_ok     = c_tx_q;
-  assign drop_filt = c_filt_q;
-  assign drop_rate = c_rate_q;
+  // Token bucket: refill then optional consume on accept.
+  // SPEC: module-design-v1.md §3.8
+  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+    if (!sys_rst_n) begin
+      r_tokens     <= 16'd0;
+      r_period_cnt <= 16'd0;
+    end else begin
+      automatic logic [15:0] t_next;
+      automatic logic [15:0] p_next;
+      t_next = r_tokens;
+      p_next = r_period_cnt;
+      if (w_rate_unlimited) begin
+        p_next = 16'd0;
+        t_next = 16'hFFFF;
+      end else if (r_period_cnt >= (i_cfg_period - 16'd1)) begin
+        p_next = 16'd0;
+        t_next = sat_add16(t_next, i_cfg_refill);
+      end else
+        p_next = r_period_cnt + 16'd1;
+      if (w_accept && !w_rate_unlimited && (t_next != 16'd0))
+        t_next = t_next - 16'd1;
+      r_tokens     <= t_next;
+      r_period_cnt <= p_next;
+    end
+  end
 
-  assign m_axis_tvalid = (st_q == ST_TX);
-  assign m_axis_tdata  = frame_q[beat_q];
-  assign m_axis_tkeep  = keep_q[beat_q];
-  assign m_axis_tlast  = (beat_q == 4'(N_BEATS - 1));
-
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      st_q     <= ST_IDLE;
-      beat_q   <= 4'd0;
-      c_tx_q   <= 32'd0;
-      c_filt_q <= 32'd0;
-      c_rate_q <= 32'd0;
-      for (fi = 0; fi < N_BEATS; fi = fi + 1) begin
-        frame_q[fi] <= 64'd0;
-        keep_q[fi]  <= 8'd0;
+  // Build 106-byte Eth/IPv4/UDP frame, walk 14 TX beats, saturating counters.
+  // SPEC: module-design-v1.md §3.8
+  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+    automatic int i, bi, base, nb, j;
+    automatic logic [7:0]  fb [0:FRAME_BYTES-1];
+    automatic logic [15:0] csum;
+    automatic logic [63:0] dtmp;
+    automatic logic [7:0]  ktmp;
+    if (!sys_rst_n) begin
+      r_beat      <= 4'd0;
+      r_tx_ok     <= 32'd0;
+      r_drop_filt <= 32'd0;
+      r_drop_rate <= 32'd0;
+      for (bi = 0; bi < N_BEATS; bi++) begin
+        r_frame[bi] <= 64'd0;
+        r_keep[bi]  <= 8'd0;
       end
     end else begin
-      logic [7:0]  fb [0:FRAME_BYTES-1];
-      logic [15:0] csum;
-      logic [63:0] dtmp;
-      logic [7:0]  ktmp;
-      integer i, bi, base, nb, j;
-
-      if (drop_filt_fire)
-        c_filt_q <= sat_inc(c_filt_q);
-      if (drop_rate_fire)
-        c_rate_q <= sat_inc(c_rate_q);
-
-      if (accept_fire) begin
-        csum = ipv4_hdr_csum(cfg_src_ip, cfg_dst_ip);
-
-        fb[0]  = cfg_dst_mac[47:40];
-        fb[1]  = cfg_dst_mac[39:32];
-        fb[2]  = cfg_dst_mac[31:24];
-        fb[3]  = cfg_dst_mac[23:16];
-        fb[4]  = cfg_dst_mac[15:8];
-        fb[5]  = cfg_dst_mac[7:0];
-        fb[6]  = cfg_src_mac[47:40];
-        fb[7]  = cfg_src_mac[39:32];
-        fb[8]  = cfg_src_mac[31:24];
-        fb[9]  = cfg_src_mac[23:16];
-        fb[10] = cfg_src_mac[15:8];
-        fb[11] = cfg_src_mac[7:0];
+      if (i_s_event_tvalid && !w_filt_ok)
+        r_drop_filt <= sat_inc(r_drop_filt);
+      if (i_s_event_tvalid && w_filt_ok && (!w_rate_ok || w_busy))
+        r_drop_rate <= sat_inc(r_drop_rate);
+      if (w_accept) begin
+        csum = ipv4_hdr_csum(i_cfg_src_ip, i_cfg_dst_ip);
+        fb[0]  = i_cfg_dst_mac[47:40];
+        fb[1]  = i_cfg_dst_mac[39:32];
+        fb[2]  = i_cfg_dst_mac[31:24];
+        fb[3]  = i_cfg_dst_mac[23:16];
+        fb[4]  = i_cfg_dst_mac[15:8];
+        fb[5]  = i_cfg_dst_mac[7:0];
+        fb[6]  = i_cfg_src_mac[47:40];
+        fb[7]  = i_cfg_src_mac[39:32];
+        fb[8]  = i_cfg_src_mac[31:24];
+        fb[9]  = i_cfg_src_mac[23:16];
+        fb[10] = i_cfg_src_mac[15:8];
+        fb[11] = i_cfg_src_mac[7:0];
         fb[12] = 8'h08;
         fb[13] = 8'h00;
-
         fb[14] = 8'h45;
         fb[15] = 8'h00;
         fb[16] = IP_TOTAL[15:8];
@@ -239,56 +254,60 @@ module mcast_eng
         fb[23] = 8'h11;
         fb[24] = csum[15:8];
         fb[25] = csum[7:0];
-        fb[26] = cfg_src_ip[31:24];
-        fb[27] = cfg_src_ip[23:16];
-        fb[28] = cfg_src_ip[15:8];
-        fb[29] = cfg_src_ip[7:0];
-        fb[30] = cfg_dst_ip[31:24];
-        fb[31] = cfg_dst_ip[23:16];
-        fb[32] = cfg_dst_ip[15:8];
-        fb[33] = cfg_dst_ip[7:0];
-
-        fb[34] = cfg_udp_sport[15:8];
-        fb[35] = cfg_udp_sport[7:0];
-        fb[36] = cfg_udp_dport[15:8];
-        fb[37] = cfg_udp_dport[7:0];
+        fb[26] = i_cfg_src_ip[31:24];
+        fb[27] = i_cfg_src_ip[23:16];
+        fb[28] = i_cfg_src_ip[15:8];
+        fb[29] = i_cfg_src_ip[7:0];
+        fb[30] = i_cfg_dst_ip[31:24];
+        fb[31] = i_cfg_dst_ip[23:16];
+        fb[32] = i_cfg_dst_ip[15:8];
+        fb[33] = i_cfg_dst_ip[7:0];
+        fb[34] = i_cfg_udp_sport[15:8];
+        fb[35] = i_cfg_udp_sport[7:0];
+        fb[36] = i_cfg_udp_dport[15:8];
+        fb[37] = i_cfg_udp_dport[7:0];
         fb[38] = UDP_LEN[15:8];
         fb[39] = UDP_LEN[7:0];
         fb[40] = 8'h00;
         fb[41] = 8'h00;
-
-        for (i = 0; i < 64; i = i + 1)
-          fb[42 + i] = s_event_tdata[8 * i +: 8];
-
-        for (bi = 0; bi < N_BEATS; bi = bi + 1) begin
+        for (i = 0; i < 64; i++)
+          fb[42 + i] = i_s_event_tdata[8 * i +: 8];
+        for (bi = 0; bi < N_BEATS; bi++) begin
           base = bi * 8;
           nb   = ((base + 8) <= FRAME_BYTES) ? 8 : (FRAME_BYTES - base);
           dtmp = 64'd0;
           ktmp = 8'd0;
-          for (j = 0; j < 8; j = j + 1) begin
+          for (j = 0; j < 8; j++) begin
             if (j < nb) begin
               dtmp[8 * j +: 8] = fb[base + j];
               ktmp[j]          = 1'b1;
             end
           end
-          frame_q[bi] <= dtmp;
-          keep_q[bi]  <= ktmp;
+          r_frame[bi] <= dtmp;
+          r_keep[bi]  <= ktmp;
         end
-
-        st_q   <= ST_TX;
-        beat_q <= 4'd0;
-        c_tx_q <= sat_inc(c_tx_q);
-      end else if (st_q == ST_TX) begin
-        if (m_axis_tready) begin
-          if (beat_q == 4'(N_BEATS - 1)) begin
-            st_q   <= ST_IDLE;
-            beat_q <= 4'd0;
-          end else begin
-            beat_q <= beat_q + 4'd1;
-          end
+        r_beat  <= 4'd0;
+        r_tx_ok <= sat_inc(r_tx_ok);
+      end else if (cs_state == ST_TX) begin
+        if (i_m_tready) begin
+          if (r_beat == 4'(N_BEATS - 1))
+            r_beat <= 4'd0;
+          else
+            r_beat <= r_beat + 4'd1;
         end
       end
     end
   end
 
+  // Sticky illegal-state flag.
+  // SPEC: module-design-v1.md §3.8
+  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+    if (!sys_rst_n)
+      r_err_sticky <= 1'b0;
+    else if ((cs_state != ST_IDLE) && (cs_state != ST_TX))
+      r_err_sticky <= 1'b1;
+  end
+
 endmodule
+
+`default_nettype wire

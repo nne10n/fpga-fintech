@@ -101,20 +101,20 @@ def parse_eth_udp(frame: bytes) -> dict:
 
 
 async def reset_dut(dut, cycles: int = 5):
-    dut.rst_n.value = 0
-    dut.s_event_tdata.value = 0
-    dut.s_event_tvalid.value = 0
-    dut.s_event_tlast.value = 0
-    dut.m_axis_tready.value = 1
-    dut.filt_we.value = 0
-    dut.filt_addr.value = 0
-    dut.filt_bit.value = 0
+    dut.sys_rst_n.value = 0
+    dut.i_s_event_tdata.value = 0
+    dut.i_s_event_tvalid.value = 0
+    dut.i_s_event_tlast.value = 0
+    dut.i_m_tready.value = 1
+    dut.i_filt_we.value = 0
+    dut.i_filt_addr.value = 0
+    dut.i_filt_bit.value = 0
     for _ in range(cycles):
-        await RisingEdge(dut.clk)
-    dut.rst_n.value = 1
+        await RisingEdge(dut.sys_clk)
+    dut.sys_rst_n.value = 1
     # Bitmap clear is large — a few extra cycles after release
     for _ in range(3):
-        await RisingEdge(dut.clk)
+        await RisingEdge(dut.sys_clk)
 
 
 async def apply_cfg(
@@ -124,37 +124,37 @@ async def apply_cfg(
     period: int = 0,
     refill: int = 0,
 ):
-    dut.cfg_src_mac.value = CFG_SRC_MAC
-    dut.cfg_dst_mac.value = CFG_DST_MAC
-    dut.cfg_src_ip.value = CFG_SRC_IP
-    dut.cfg_dst_ip.value = CFG_DST_IP
-    dut.cfg_udp_sport.value = UDP_SPORT
-    dut.cfg_udp_dport.value = UDP_DPORT
-    dut.cfg_ch_mask.value = ch_mask & 0xFF
-    dut.cfg_period.value = period & 0xFFFF
-    dut.cfg_refill.value = refill & 0xFFFF
-    await RisingEdge(dut.clk)
+    dut.i_cfg_src_mac.value = CFG_SRC_MAC
+    dut.i_cfg_dst_mac.value = CFG_DST_MAC
+    dut.i_cfg_src_ip.value = CFG_SRC_IP
+    dut.i_cfg_dst_ip.value = CFG_DST_IP
+    dut.i_cfg_udp_sport.value = UDP_SPORT
+    dut.i_cfg_udp_dport.value = UDP_DPORT
+    dut.i_cfg_ch_mask.value = ch_mask & 0xFF
+    dut.i_cfg_period.value = period & 0xFFFF
+    dut.i_cfg_refill.value = refill & 0xFFFF
+    await RisingEdge(dut.sys_clk)
 
 
 async def filt_set(dut, symbol_id: int, enable: int = 1):
-    dut.filt_addr.value = symbol_id & 0x1FFF
-    dut.filt_bit.value = enable & 1
-    dut.filt_we.value = 1
-    await RisingEdge(dut.clk)
-    dut.filt_we.value = 0
-    await RisingEdge(dut.clk)
+    dut.i_filt_addr.value = symbol_id & 0x1FFF
+    dut.i_filt_bit.value = enable & 1
+    dut.i_filt_we.value = 1
+    await RisingEdge(dut.sys_clk)
+    dut.i_filt_we.value = 0
+    await RisingEdge(dut.sys_clk)
 
 
 async def send_event(dut, data: int, probe_tready=None):
     """Drive one event beat; record tready if requested."""
-    dut.s_event_tdata.value = data
-    dut.s_event_tvalid.value = 1
-    dut.s_event_tlast.value = 1
-    await RisingEdge(dut.clk)
+    dut.i_s_event_tdata.value = data
+    dut.i_s_event_tvalid.value = 1
+    dut.i_s_event_tlast.value = 1
+    await RisingEdge(dut.sys_clk)
     if probe_tready is not None:
-        probe_tready.append(int(dut.s_event_tready.value))
-    dut.s_event_tvalid.value = 0
-    dut.s_event_tlast.value = 0
+        probe_tready.append(int(dut.o_s_event_tready.value))
+    dut.i_s_event_tvalid.value = 0
+    dut.i_s_event_tlast.value = 0
 
 
 async def recv_frame(dut, timeout_cycles: int = 200) -> bytes:
@@ -162,12 +162,12 @@ async def recv_frame(dut, timeout_cycles: int = 200) -> bytes:
     cycles = 0
     got = False
     while cycles < timeout_cycles:
-        await RisingEdge(dut.clk)
+        await RisingEdge(dut.sys_clk)
         cycles += 1
-        if int(dut.m_axis_tvalid.value) == 1 and int(dut.m_axis_tready.value) == 1:
-            data = int(dut.m_axis_tdata.value)
-            keep = int(dut.m_axis_tkeep.value)
-            last = int(dut.m_axis_tlast.value)
+        if int(dut.o_m_tvalid.value) == 1 and int(dut.i_m_tready.value) == 1:
+            data = int(dut.o_m_tdata.value)
+            keep = int(dut.o_m_tkeep.value)
+            last = int(dut.o_m_tlast.value)
             for b_i in range(8):
                 if keep & (1 << b_i):
                     buf.append((data >> (8 * b_i)) & 0xFF)
@@ -181,14 +181,14 @@ async def recv_frame(dut, timeout_cycles: int = 200) -> bytes:
 
 async def expect_idle(dut, cycles: int = 30) -> bool:
     for _ in range(cycles):
-        await RisingEdge(dut.clk)
-        if int(dut.m_axis_tvalid.value) == 1:
+        await RisingEdge(dut.sys_clk)
+        if int(dut.o_m_tvalid.value) == 1:
             return False
     return True
 
 
 async def _init(dut, *, ch_mask: int = 0xFF, period: int = 0, refill: int = 0):
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.sys_clk, 10, unit="ns").start())
     await apply_cfg(dut, ch_mask=ch_mask, period=period, refill=refill)
     await reset_dut(dut)
     # Re-apply cfg after reset (rst does not clear cfg inputs, but be explicit)
@@ -221,7 +221,7 @@ async def test_tx_roundtrip(dut):
     await filt_set(dut, 5, 1)
 
     ev = _make_ev(symbol_id=5, ch=CH_ORDER, seq=7)
-    ok0 = _ctr(dut, "tx_ok")
+    ok0 = _ctr(dut, "o_tx_ok")
 
     send = cocotb.start_soon(send_event(dut, ev))
     frame = await recv_frame(dut, timeout_cycles=80)
@@ -249,9 +249,9 @@ async def test_tx_roundtrip(dut):
         f" got={unpack_event_t(got)}\n"
         f" exp={unpack_event_t(ev)}"
     )
-    assert _ctr(dut, "tx_ok") == ok0 + 1
-    assert _ctr(dut, "drop_filt") == 0
-    assert _ctr(dut, "drop_rate") == 0
+    assert _ctr(dut, "o_tx_ok") == ok0 + 1
+    assert _ctr(dut, "o_drop_filt") == 0
+    assert _ctr(dut, "o_drop_rate") == 0
 
 
 @cocotb.test()
@@ -260,13 +260,13 @@ async def test_drop_filt_symbol(dut):
     await _init(dut, ch_mask=0xFF, period=0)
     await filt_set(dut, 5, 1)  # enable 5, send 6
 
-    f0 = _ctr(dut, "drop_filt")
-    ok0 = _ctr(dut, "tx_ok")
+    f0 = _ctr(dut, "o_drop_filt")
+    ok0 = _ctr(dut, "o_tx_ok")
     await send_event(dut, _make_ev(symbol_id=6, ch=CH_ORDER))
     idle = await expect_idle(dut, 40)
     assert idle, "unexpected TX on symbol filter miss"
-    assert _ctr(dut, "drop_filt") == f0 + 1
-    assert _ctr(dut, "tx_ok") == ok0
+    assert _ctr(dut, "o_drop_filt") == f0 + 1
+    assert _ctr(dut, "o_tx_ok") == ok0
 
 
 @cocotb.test()
@@ -275,13 +275,13 @@ async def test_drop_filt_ch_mask(dut):
     await _init(dut, ch_mask=(1 << CH_SNAP), period=0)  # only SNAP
     await filt_set(dut, 5, 1)
 
-    f0 = _ctr(dut, "drop_filt")
-    ok0 = _ctr(dut, "tx_ok")
+    f0 = _ctr(dut, "o_drop_filt")
+    ok0 = _ctr(dut, "o_tx_ok")
     await send_event(dut, _make_ev(symbol_id=5, ch=CH_TRADE))
     idle = await expect_idle(dut, 40)
     assert idle
-    assert _ctr(dut, "drop_filt") == f0 + 1
-    assert _ctr(dut, "tx_ok") == ok0
+    assert _ctr(dut, "o_drop_filt") == f0 + 1
+    assert _ctr(dut, "o_tx_ok") == ok0
 
 
 @cocotb.test()
@@ -294,11 +294,11 @@ async def test_token_bucket_drop_rate(dut):
 
     # Wait for a few refill ticks to accumulate ~3 tokens
     for _ in range(16):
-        await RisingEdge(dut.clk)
+        await RisingEdge(dut.sys_clk)
 
     probes: list[int] = []
-    r0 = _ctr(dut, "drop_rate")
-    ok0 = _ctr(dut, "tx_ok")
+    r0 = _ctr(dut, "o_drop_rate")
+    ok0 = _ctr(dut, "o_tx_ok")
 
     # Burst many events back-to-back; some TX, rest drop_rate; never stall
     n_burst = 20
@@ -307,15 +307,15 @@ async def test_token_bucket_drop_rate(dut):
 
     # Drain any in-flight TX
     for _ in range(400):
-        await RisingEdge(dut.clk)
+        await RisingEdge(dut.sys_clk)
 
     assert all(p == 1 for p in probes), f"tready not stuck at 1: {probes}"
-    tx = _ctr(dut, "tx_ok") - ok0
-    dr = _ctr(dut, "drop_rate") - r0
+    tx = _ctr(dut, "o_tx_ok") - ok0
+    dr = _ctr(dut, "o_drop_rate") - r0
     assert tx >= 1, "expected at least one TX"
     assert dr >= 1, f"expected drop_rate, tx={tx} drop_rate={dr}"
     assert tx + dr == n_burst, f"tx({tx})+drop_rate({dr}) != burst({n_burst})"
-    assert _ctr(dut, "drop_filt") == 0
+    assert _ctr(dut, "o_drop_filt") == 0
 
 
 @cocotb.test()
