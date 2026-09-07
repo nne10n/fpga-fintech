@@ -3,7 +3,10 @@
 //
 // USE_L1_DDR=0 (default): l1_cmd_stub — keeps legacy sim-book / x1100 green
 // USE_L1_DDR=1: l1_ddr_engine + internal axi_ddr_model (no board FDK)
+// USE_BOOK_PUSH=0 (default): export RT/refill hooks only; no push top
+// USE_BOOK_PUSH=1: instantiate book_push_refill_top (DDR CDC stub; DMA sink)
 // When L1 not ready: drop cmd (engine drop_cnt++); NEVER backpressure decode
+// P1.4: L0 delta → o_rt_* pulse; dig-hole → soft o_refill_req_* (no decode BP)
 // -----------------------------------------------------------------------------
 `timescale 1ns / 1ps
 
@@ -11,10 +14,15 @@ module book_engine
   import md_pkg::*;
   import book_pkg::*;
 #(
-  parameter int N_H          = N_HOT,
-  parameter bit USE_L1_DDR   = 1'b0,
-  parameter int L1_BANK_FIFO = 64,
-  parameter int L1_RTT       = 8
+  parameter int N_H             = N_HOT,
+  parameter bit USE_L1_DDR      = 1'b0,
+  parameter int L1_BANK_FIFO    = 64,
+  parameter int L1_RTT          = 8,
+  // P1.4 gated push/refill (default off → sim-book / x1100 unchanged)
+  parameter bit USE_BOOK_PUSH   = 1'b0,
+  parameter int PUSH_N_SYM      = 64,   // light N for smoke; full N_SYM later
+  parameter int PUSH_DEPTH_RF   = 64,
+  parameter int PUSH_DEPTH_SNAP = 64
 ) (
   input  logic         clk,
   input  logic         rst_n,
@@ -56,7 +64,21 @@ module book_engine
   output level_t          dbg_lvl6,
   output level_t          dbg_lvl7,
   output level_t          dbg_lvl8,
-  output level_t          dbg_lvl9
+  output level_t          dbg_lvl9,
+
+  // P1.4 hooks (always driven). Interim symbol_id = hot_id-1 until code→id map.
+  output logic                o_rt_valid,
+  output logic [N_SYM_AW-1:0] o_rt_symbol,
+  output l0_top10_row_t       o_rt_row,
+  output logic                o_refill_req_valid,
+  output refill_req_t         o_refill_req,
+
+  // Optional DMA observe when USE_BOOK_PUSH=1 (else tied 0)
+  // Caller must NOT feed i_push_dma_ready into decode/udp_strip.
+  output logic            o_push_dma_valid,
+  output top10_msg_t      o_push_dma_msg,
+  input  logic            i_push_dma_ready,
+  output logic [31:0]     o_push_tx_rt
 );
 
   assign s_event_tready = 1'b1;
@@ -93,7 +115,6 @@ module book_engine
 
   generate
     if (USE_L1_DDR) begin : g_l1_ddr
-      // Internal AXI interconnect to behavioral DDR (sim / no-FDK)
       logic [3:0]  awid, arid, bid, rid;
       logic [32:0] awaddr, araddr;
       logic [7:0]  awlen, arlen;
@@ -180,6 +201,13 @@ module book_engine
   book_delta_t     oc_delta;
   logic            oc_delta_v;
 
+  logic            oc_rt_v;
+  logic [HOT_AW:0] oc_rt_hid;
+  l0_top10_row_t   oc_rt_row;
+  logic            oc_dig_v;
+  logic [1:0]      oc_dig_side;
+  logic [3:0]      oc_dig_depth;
+
   order_cache u_oc (
     .clk(clk), .rst_n(rst_n), .clear(book_clear),
     .cmd_valid(oc_valid), .cmd_op(oc_op), .cmd_order_id(oc_oid),
@@ -192,8 +220,29 @@ module book_engine
     .dbg_lvl0(dbg_lvl0), .dbg_lvl1(dbg_lvl1), .dbg_lvl2(dbg_lvl2),
     .dbg_lvl3(dbg_lvl3), .dbg_lvl4(dbg_lvl4), .dbg_lvl5(dbg_lvl5),
     .dbg_lvl6(dbg_lvl6), .dbg_lvl7(dbg_lvl7), .dbg_lvl8(dbg_lvl8),
-    .dbg_lvl9(dbg_lvl9)
+    .dbg_lvl9(dbg_lvl9),
+    .m_rt_valid(oc_rt_v), .m_rt_hot_id(oc_rt_hid), .m_rt_row(oc_rt_row),
+    .m_dig_hole(oc_dig_v), .m_dig_side(oc_dig_side), .m_dig_depth(oc_dig_depth)
   );
+
+  // Map hot_id (1..N_H) → symbol index 0..N_H-1 for push/refill hooks
+  wire [N_SYM_AW-1:0] w_rt_sym =
+      (oc_rt_hid >= (HOT_AW+1)'(1)) ? N_SYM_AW'(oc_rt_hid - 1'b1) : '0;
+
+  assign o_rt_valid  = oc_rt_v;
+  assign o_rt_symbol = w_rt_sym;
+  assign o_rt_row    = oc_rt_row;
+
+  // Soft refill on dig-hole (l1_may_have_more assumed 1 until L1 best16 ready)
+  refill_req_t w_refill_req;
+  always_comb begin
+    w_refill_req = '0;
+    w_refill_req.symbol_id = 16'(w_rt_sym);
+    w_refill_req.side      = oc_dig_side;
+    w_refill_req.seq_start = oc_rt_row.seq;
+  end
+  assign o_refill_req_valid = oc_dig_v;
+  assign o_refill_req       = w_refill_req;
 
   book_delta_t delta_q;
   logic        delta_v_q;
@@ -298,8 +347,92 @@ module book_engine
     end
   end
 
+  // ---------------------------------------------------------------------------
+  // P1.4: gated book_push_refill_top
+  // - Hot Port-A write mirrors RT row into l0_top10_mem (same view as push)
+  // - DDR CDC stubbed (ready=1, no rsp) until best16 AXI shell
+  // - DMA sink always ready internally (iron rule); i_push_dma_ready observe-only
+  // ---------------------------------------------------------------------------
+  generate
+    if (USE_BOOK_PUSH) begin : g_book_push
+      logic          w_dma_v;
+      top10_msg_t    w_dma_msg;
+      logic          w_ddr_req_v, w_ddr_rsp_r;
+      refill_req_t   w_ddr_req;
+      logic          w_err_nc;
+      logic [31:0]   w_conf_nc;
+      logic [2:0]    w_snap_cs_nc, w_grant_nc;
+      logic [3:0]    w_rf_cs_nc;
+      l0_top10_row_t w_hot_rd_nc;
+      logic          w_hot_rv_nc;
+      logic [31:0]   r_tx_rt;
+
+      book_push_refill_top #(
+        .N_SYM_P     (PUSH_N_SYM),
+        .DEPTH_REFILL(PUSH_DEPTH_RF),
+        .DEPTH_SNAP  (PUSH_DEPTH_SNAP)
+      ) u_push_top (
+        .sys_clk            (clk),
+        .sys_rst_n          (rst_n),
+        // Mirror RT row into L0 mem Port-A (same cycle as push_q_rt)
+        .i_hot_upd_req      (oc_rt_v),
+        .i_hot_upd_we       (1'b1),
+        .i_hot_upd_symbol   (w_rt_sym),
+        .i_hot_upd_wdata    (oc_rt_row),
+        .o_hot_upd_rdata    (w_hot_rd_nc),
+        .o_hot_upd_rvalid   (w_hot_rv_nc),
+        .i_rt_valid         (oc_rt_v),
+        .i_rt_symbol        (w_rt_sym),
+        .i_rt_row           (oc_rt_row),
+        .i_refill_req_valid (oc_dig_v),
+        .i_refill_req       (w_refill_req),
+        .i_snap_enable      (1'b0),
+        .i_snap_skip_empty  (1'b1),
+        .i_period_cycles    (32'd3_222_656),
+        // DDR CDC stub: accept reqs, never return rsp
+        .o_ddr_req_valid    (w_ddr_req_v),
+        .i_ddr_req_ready    (1'b1),
+        .o_ddr_req          (w_ddr_req),
+        .i_ddr_rsp_valid    (1'b0),
+        .o_ddr_rsp_ready    (w_ddr_rsp_r),
+        .i_ddr_rsp          ('0),
+        // DMA: always ready — NEVER gate decode; expose for observe
+        .o_dma_valid        (w_dma_v),
+        .i_dma_ready        (1'b1),
+        .o_dma_msg          (w_dma_msg),
+        .o_dbg_err_sticky   (w_err_nc),
+        .o_dbg_mem_conflict_cnt(w_conf_nc),
+        .o_dbg_snap_cs      (w_snap_cs_nc),
+        .o_dbg_refill_cs    (w_rf_cs_nc),
+        .o_dbg_push_grant   (w_grant_nc)
+      );
+
+      always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n || book_clear)
+          r_tx_rt <= '0;
+        else if (w_dma_v)
+          r_tx_rt <= sat_inc(r_tx_rt);
+      end
+
+      assign o_push_dma_valid = w_dma_v;
+      assign o_push_dma_msg   = w_dma_msg;
+      assign o_push_tx_rt     = r_tx_rt;
+
+      logic unused_push;
+      assign unused_push = ^{w_ddr_req_v, w_ddr_req, w_ddr_rsp_r, w_hot_rv_nc,
+                             w_hot_rd_nc, w_err_nc, w_conf_nc, w_snap_cs_nc,
+                             w_rf_cs_nc, w_grant_nc, i_push_dma_ready};
+    end else begin : g_no_book_push
+      assign o_push_dma_valid = 1'b0;
+      assign o_push_dma_msg   = '0;
+      assign o_push_tx_rt     = 32'd0;
+      logic unused_ready;
+      assign unused_ready = i_push_dma_ready;
+    end
+  endgenerate
+
   logic unused_tie;
   assign unused_tie = ^{l1_ready, oc_ready, l1_drop, l1_last_v, l1_last,
-                        l1_done, l1_err, l1_hwm};
+                        l1_done, l1_err, l1_hwm, oc_dig_depth};
 
 endmodule

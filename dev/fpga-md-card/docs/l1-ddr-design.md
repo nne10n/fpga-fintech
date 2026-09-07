@@ -1,6 +1,6 @@
 # L1 DDR 全量簿 — 详细设计（替换 l1_cmd_stub）
 
-日期：2026-09-01  
+日期：2026-09-01（2026-09-04 增补 §3.4 BASE_BEST16）  
 现状：`l1_cmd_stub` 已吞 `l1_cmd_t` 并计数；L0 热门 Top-10 已绿  
 目标：把桩换成 **可仿真、可综合** 的 L1：多 bank 调度 + AXI-MM（或行为模型）访 DDR  
 板卡：Yusur NDPP X1100（**假定** User Logic 有 AXI-MM ↔ DDR；上板前用 FDK 核对）
@@ -113,6 +113,33 @@ RMW：`qty +=/- delta`，至 0 则 valid=0。
 ### 3.3 Symbol 目录（可选 v1.1）
 
 `BASE_SYM + compact_id * 32` → 统计、挂单数；首版可不做。
+
+### 3.4 best16 旁路表 `Best16Table`（P0 冻结，2026-09-04）
+
+父契约：`docs/p0-top10-axi-contract.md`、`book-push-refill-v2.md`。
+
+```
+addr = BASE_BEST16 + symbol_id * STRIDE_SYM + side * 256 + slot * 16
+STRIDE_SYM = 512B          // 2 × 16 × 16
+side = 0 bid（px 降序）, 1 ask（px 升序）
+slot = 0..15；slot0 = 最优
+槽 16B：{px:64, qty:32, vld:1, pad}
+```
+
+默认基址（仿真）：
+
+```
+BASE_ORDER  = 0
+BASE_LEVEL  = N_ORDER_L1 * 64
+BASE_BEST16 = BASE_LEVEL + N_LEVEL_L1 * 64   // CSR csr_base_best16 可覆盖
+预留窗：4096 * 512B = 2MB
+```
+
+维护：每条 L1 ADD/CXL/TRADE 在 Level RMW 后更新对应 `(symbol,side)` 的 best16。  
+回补：读该侧 slot0..9 → 填 L0 Top-10；AXI **4 beat@512b**；与 bank RMW 共口时 **RMW > refill**，refill outstanding ≤1～2。
+
+`book_pkg::best16_addr()` 为地址辅助函数。
+
 
 ---
 

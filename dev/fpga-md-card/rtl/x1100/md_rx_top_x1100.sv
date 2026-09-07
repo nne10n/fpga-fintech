@@ -286,6 +286,15 @@ module md_rx_top_x1100
   generate
     if (ENABLE_BOOK) begin : g_book
       logic book_rdy;
+      // P1.4 hooks unused until USE_BOOK_PUSH / DMA sink wired
+      logic                b_rt_v_nc;
+      logic [N_SYM_AW-1:0] b_rt_sym_nc;
+      l0_top10_row_t       b_rt_row_nc;
+      logic                b_rf_v_nc;
+      refill_req_t         b_rf_nc;
+      logic                b_push_v_nc;
+      top10_msg_t          b_push_msg_nc;
+      logic [31:0]         b_push_tx_nc;
       book_engine u_book (
         .clk(clk), .rst_n(rst_n),
         .s_event_tdata(arb_tdata), .s_event_tvalid(arb_tvalid),
@@ -303,8 +312,16 @@ module md_rx_top_x1100
         .dbg_hot_id(7'd1), .dbg_side(SIDE_BID),
         .dbg_lvl0(dbg0), .dbg_lvl1(dbg1), .dbg_lvl2(dbg2), .dbg_lvl3(dbg3),
         .dbg_lvl4(dbg4), .dbg_lvl5(dbg5), .dbg_lvl6(dbg6), .dbg_lvl7(dbg7),
-        .dbg_lvl8(dbg8), .dbg_lvl9(dbg9)
+        .dbg_lvl8(dbg8), .dbg_lvl9(dbg9),
+        .o_rt_valid(b_rt_v_nc), .o_rt_symbol(b_rt_sym_nc), .o_rt_row(b_rt_row_nc),
+        .o_refill_req_valid(b_rf_v_nc), .o_refill_req(b_rf_nc),
+        .o_push_dma_valid(b_push_v_nc), .o_push_dma_msg(b_push_msg_nc),
+        .i_push_dma_ready(1'b1), .o_push_tx_rt(b_push_tx_nc)
       );
+      logic unused_p14;
+      assign unused_p14 = ^{b_rt_v_nc, b_rt_sym_nc, b_rt_row_nc.nonempty,
+                            b_rf_v_nc, b_rf_nc.symbol_id, b_push_v_nc,
+                            b_push_msg_nc.symbol_id, b_push_tx_nc};
       assign arb_tready   = book_rdy; // always 1
       assign cam_bank_sel = 1'b0;
       assign cam_hit_c    = 32'd0;
