@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cocotb tests for mcast_eng (M5)."""
+"""cocotb tests for mcast_eng (M5 + P1 RFC1112/TTL)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,9 @@ from event_util import (
 )
 
 # Header template (same byte-order convention as udp_strip TB: big-endian ints)
-DST_MAC = bytes.fromhex("01005e000001")
+# RFC1112 map of 239.1.1.1 (0xEF010101) → 01:00:5e:01:01:01 (bit23 cleared)
+MAPPED_DA = bytes.fromhex("01005e010101")
+DST_MAC = MAPPED_DA  # default DA expectation when map_en=1
 SRC_MAC = bytes.fromhex("001122334455")
 DST_IP = bytes.fromhex("ef010101")  # 239.1.1.1
 SRC_IP = bytes.fromhex("0a000001")  # 10.0.0.1
@@ -30,6 +32,13 @@ CFG_DST_MAC = int.from_bytes(DST_MAC, "big")
 CFG_SRC_MAC = int.from_bytes(SRC_MAC, "big")
 CFG_DST_IP = int.from_bytes(DST_IP, "big")
 CFG_SRC_IP = int.from_bytes(SRC_IP, "big")
+
+
+def rfc1112_map(dst_ip: int) -> bytes:
+    """dst_mac = {24'h01005E, 1'b0, dst_ip[22:0]}"""
+    low23 = dst_ip & 0x7FFFFF
+    mac_int = (0x01005E << 24) | low23
+    return mac_int.to_bytes(6, "big")
 
 
 def _ctr(dut, name: str) -> int:
@@ -123,13 +132,21 @@ async def apply_cfg(
     ch_mask: int = 0xFF,
     period: int = 0,
     refill: int = 0,
+    src_mac: int | None = None,
+    dst_mac: int | None = None,
+    src_ip: int | None = None,
+    dst_ip: int | None = None,
+    ttl_default: int = 1,
+    map_en: int = 1,
 ):
-    dut.i_cfg_src_mac.value = CFG_SRC_MAC
-    dut.i_cfg_dst_mac.value = CFG_DST_MAC
-    dut.i_cfg_src_ip.value = CFG_SRC_IP
-    dut.i_cfg_dst_ip.value = CFG_DST_IP
+    dut.i_cfg_src_mac.value = CFG_SRC_MAC if src_mac is None else src_mac
+    dut.i_cfg_dst_mac.value = CFG_DST_MAC if dst_mac is None else dst_mac
+    dut.i_cfg_src_ip.value = CFG_SRC_IP if src_ip is None else src_ip
+    dut.i_cfg_dst_ip.value = CFG_DST_IP if dst_ip is None else dst_ip
     dut.i_cfg_udp_sport.value = UDP_SPORT
     dut.i_cfg_udp_dport.value = UDP_DPORT
+    dut.i_cfg_ttl_default.value = ttl_default & 0xFF
+    dut.i_cfg_map_en.value = map_en & 1
     dut.i_cfg_ch_mask.value = ch_mask & 0xFF
     dut.i_cfg_period.value = period & 0xFFFF
     dut.i_cfg_refill.value = refill & 0xFFFF
@@ -187,12 +204,19 @@ async def expect_idle(dut, cycles: int = 30) -> bool:
     return True
 
 
-async def _init(dut, *, ch_mask: int = 0xFF, period: int = 0, refill: int = 0):
+async def _init(
+    dut,
+    *,
+    ch_mask: int = 0xFF,
+    period: int = 0,
+    refill: int = 0,
+    **cfg_kw,
+):
     cocotb.start_soon(Clock(dut.sys_clk, 10, unit="ns").start())
-    await apply_cfg(dut, ch_mask=ch_mask, period=period, refill=refill)
+    await apply_cfg(dut, ch_mask=ch_mask, period=period, refill=refill, **cfg_kw)
     await reset_dut(dut)
     # Re-apply cfg after reset (rst does not clear cfg inputs, but be explicit)
-    await apply_cfg(dut, ch_mask=ch_mask, period=period, refill=refill)
+    await apply_cfg(dut, ch_mask=ch_mask, period=period, refill=refill, **cfg_kw)
 
 
 def _make_ev(symbol_id: int = 5, ch: int = CH_ORDER, seq: int = 1) -> int:
@@ -234,6 +258,7 @@ async def test_tx_roundtrip(dut):
     assert parsed["ethertype"] == 0x0800
     assert parsed["ver_ihl"] == 0x45
     assert parsed["proto"] == 17
+    assert parsed["ttl"] == 1
     assert parsed["total_len"] == 92
     assert parsed["src_ip"] == SRC_IP
     assert parsed["dst_ip"] == DST_IP
@@ -338,3 +363,142 @@ async def test_ip_checksum(dut):
     assert parsed["ip_csum"] == expect, f"csum {parsed['ip_csum']:04x} != {expect:04x}"
     # Also verify checksum validates to 0 when included
     assert ipv4_checksum(parsed["ip_hdr"]) == 0
+
+
+@cocotb.test()
+async def test_map_da(dut):
+    """dst_ip=239.1.1.1 → DA=01:00:5e:01:01:01 (RFC1112, bit23 cleared)."""
+    wrong_mac = int.from_bytes(bytes.fromhex("01005e000001"), "big")
+    await _init(
+        dut,
+        ch_mask=0xFF,
+        period=0,
+        map_en=1,
+        dst_ip=0xEF010101,
+        dst_mac=wrong_mac,  # ignored when map_en=1
+    )
+    await filt_set(dut, 5, 1)
+
+    send = cocotb.start_soon(send_event(dut, _make_ev(symbol_id=5, ch=CH_ORDER)))
+    frame = await recv_frame(dut)
+    await send
+
+    parsed = parse_eth_udp(frame)
+    exp = rfc1112_map(0xEF010101)
+    assert exp == MAPPED_DA
+    assert parsed["dst_mac"] == exp, f"DA {parsed['dst_mac'].hex()} != {exp.hex()}"
+
+
+@cocotb.test()
+async def test_ttl_default_1(dut):
+    """IP TTL byte == 1; header checksum matches; cfg==0 also yields TTL 1."""
+    await _init(dut, ch_mask=0xFF, period=0, ttl_default=1)
+    await filt_set(dut, 5, 1)
+
+    send = cocotb.start_soon(send_event(dut, _make_ev(symbol_id=5, ch=CH_ORDER)))
+    frame = await recv_frame(dut)
+    await send
+
+    parsed = parse_eth_udp(frame)
+    assert parsed["ttl"] == 1
+    hdr = bytearray(parsed["ip_hdr"])
+    hdr[10] = 0
+    hdr[11] = 0
+    expect = ipv4_checksum(bytes(hdr))
+    assert parsed["ip_csum"] == expect
+    assert ipv4_checksum(parsed["ip_hdr"]) == 0
+
+    # CSR ttl_default==0 treated as 1 (impl §2.1)
+    await apply_cfg(dut, ttl_default=0, map_en=1)
+    send2 = cocotb.start_soon(send_event(dut, _make_ev(symbol_id=5, ch=CH_ORDER, seq=2)))
+    frame2 = await recv_frame(dut)
+    await send2
+    assert parse_eth_udp(frame2)["ttl"] == 1
+
+
+@cocotb.test()
+async def test_bad_sa_group(dut):
+    """src_ip in 224/4 → no TX + err_addr_sticky."""
+    # 224.0.0.1
+    await _init(dut, ch_mask=0xFF, period=0, src_ip=0xE0000001, map_en=1)
+    await filt_set(dut, 5, 1)
+
+    ok0 = _ctr(dut, "o_tx_ok")
+    assert _ctr(dut, "o_err_addr_sticky") == 0
+    probes: list[int] = []
+    await send_event(dut, _make_ev(symbol_id=5, ch=CH_ORDER), probe_tready=probes)
+    idle = await expect_idle(dut, 40)
+    assert idle, "unexpected TX with group SA"
+    assert _ctr(dut, "o_tx_ok") == ok0
+    assert _ctr(dut, "o_err_addr_sticky") == 1
+    assert all(p == 1 for p in probes), f"tready not 1 on drop: {probes}"
+    assert int(dut.o_s_event_tready.value) == 1
+
+
+@cocotb.test()
+async def test_bad_da_unicast(dut):
+    """dst_ip unicast → no TX + err_addr_sticky."""
+    await _init(dut, ch_mask=0xFF, period=0, dst_ip=0x0A000002, map_en=1)
+    await filt_set(dut, 5, 1)
+
+    ok0 = _ctr(dut, "o_tx_ok")
+    probes: list[int] = []
+    await send_event(dut, _make_ev(symbol_id=5, ch=CH_ORDER), probe_tready=probes)
+    idle = await expect_idle(dut, 40)
+    assert idle, "unexpected TX with unicast DA"
+    assert _ctr(dut, "o_tx_ok") == ok0
+    assert _ctr(dut, "o_err_addr_sticky") == 1
+    assert all(p == 1 for p in probes), f"tready not 1 on drop: {probes}"
+
+
+@cocotb.test()
+async def test_map_en0_mismatch(dut):
+    """map_en=0 and CSR mac != map(dst_ip) → no TX + err_mac_mismatch."""
+    bad_mac = int.from_bytes(bytes.fromhex("01005e000001"), "big")  # != map
+    await _init(
+        dut,
+        ch_mask=0xFF,
+        period=0,
+        map_en=0,
+        dst_mac=bad_mac,
+        dst_ip=0xEF010101,
+    )
+    await filt_set(dut, 5, 1)
+
+    ok0 = _ctr(dut, "o_tx_ok")
+    assert _ctr(dut, "o_err_mac_mismatch") == 0
+    probes: list[int] = []
+    await send_event(dut, _make_ev(symbol_id=5, ch=CH_ORDER), probe_tready=probes)
+    idle = await expect_idle(dut, 40)
+    assert idle, "unexpected TX on MAC mismatch"
+    assert _ctr(dut, "o_tx_ok") == ok0
+    assert _ctr(dut, "o_err_mac_mismatch") == 1
+    assert _ctr(dut, "o_err_addr_sticky") == 0
+    assert all(p == 1 for p in probes), f"tready not 1 on drop: {probes}"
+
+
+@cocotb.test()
+async def test_map_en0_match(dut):
+    """map_en=0 and CSR mac == map(dst_ip) → normal TX with that DA."""
+    good_mac = int.from_bytes(rfc1112_map(0xEF010101), "big")
+    await _init(
+        dut,
+        ch_mask=0xFF,
+        period=0,
+        map_en=0,
+        dst_mac=good_mac,
+        dst_ip=0xEF010101,
+    )
+    await filt_set(dut, 5, 1)
+
+    ok0 = _ctr(dut, "o_tx_ok")
+    send = cocotb.start_soon(send_event(dut, _make_ev(symbol_id=5, ch=CH_ORDER)))
+    frame = await recv_frame(dut)
+    await send
+
+    parsed = parse_eth_udp(frame)
+    assert parsed["dst_mac"] == rfc1112_map(0xEF010101)
+    assert parsed["ttl"] == 1
+    assert _ctr(dut, "o_tx_ok") == ok0 + 1
+    assert _ctr(dut, "o_err_mac_mismatch") == 0
+    assert _ctr(dut, "o_err_addr_sticky") == 0

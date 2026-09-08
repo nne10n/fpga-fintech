@@ -65,6 +65,8 @@ module md_rx_top
   input  logic [7:0]   cfg_ch_mask,
   input  logic [15:0]  cfg_mcast_period,
   input  logic [15:0]  cfg_mcast_refill,
+  input  logic [7:0]   cfg_mcast_ttl = 8'd1,
+  input  logic         cfg_mcast_map_en = 1'b1,
   input  logic         filt_we,
   input  logic [12:0]  filt_addr,
   input  logic         filt_bit,
@@ -121,7 +123,11 @@ module md_rx_top
   output logic [31:0]  telem_cam_hit,
   output logic [31:0]  telem_cam_miss,
   output logic [31:0]  telem_mcast_tx,
-  output logic [31:0]  telem_dma_tx
+  output logic [31:0]  telem_dma_tx,
+
+  // ---- mcast sticky (CSR RO / keep) ----
+  (* keep = "true" *) output logic telem_mcast_err_addr,
+  (* keep = "true" *) output logic telem_mcast_err_mac
 );
 
   // =========================================================================
@@ -149,6 +155,8 @@ module md_rx_top
   logic       fast_dbg_err_nc   [0:1];
   logic       mcast_dbg_cs_nc;
   logic       mcast_dbg_err_nc;
+  logic       mcast_err_addr;
+  logic       mcast_err_mac;
   always_comb begin
     s0_tu_fix = s0_tuser; s0_tu_fix.port_id = 3'(P_SSE_A);
     s1_tu_fix = s1_tuser; s1_tu_fix.port_id = 3'(P_SSE_B);
@@ -490,10 +498,12 @@ module md_rx_top
   );
 
   // =========================================================================
-  // event_bus: broadcast to mcast + dma (both tready=1 → AND is free)
+  // event_bus: broadcast to mcast + dma
+  // Role A iron rule: never AND consumer readies back onto event_bus.
+  // mcast_eng / dma_pack keep s_event_tready≡1 and drop internally.
   // =========================================================================
   logic mcast_ev_ready, dma_ev_ready;
-  assign cam_tready = mcast_ev_ready && dma_ev_ready;
+  assign cam_tready = 1'b1;
 
   logic [31:0] mcast_tx_c, mcast_df, mcast_dr;
   logic [31:0] dma_tx_c, dma_df;
@@ -517,6 +527,8 @@ module md_rx_top
     .i_cfg_dst_ip(cfg_mcast_dst_ip), // 电平
     .i_cfg_udp_sport(cfg_mcast_udp_sport), // 电平
     .i_cfg_udp_dport(cfg_mcast_udp_dport), // 电平
+    .i_cfg_ttl_default(cfg_mcast_ttl), // 电平
+    .i_cfg_map_en(cfg_mcast_map_en), // 电平
     .i_cfg_ch_mask(cfg_ch_mask), // 电平
     .i_cfg_period(cfg_mcast_period), // 电平
     .i_cfg_refill(cfg_mcast_refill), // 电平
@@ -526,6 +538,8 @@ module md_rx_top
     .o_tx_ok(mcast_tx_c), // 电平
     .o_drop_filt(mcast_df), // 电平
     .o_drop_rate(mcast_dr), // 电平
+    .o_err_addr_sticky(mcast_err_addr), // sticky
+    .o_err_mac_mismatch(mcast_err_mac), // sticky
     .o_dbg_cs_state(mcast_dbg_cs_nc), // sticky
     .o_dbg_err_sticky(mcast_dbg_err_nc) // sticky
   );
@@ -567,10 +581,14 @@ module md_rx_top
     .mcast_tx_c(telem_mcast_tx), .dma_tx_c(telem_dma_tx)
   );
 
+  assign telem_mcast_err_addr = mcast_err_addr;
+  assign telem_mcast_err_mac  = mcast_err_mac;
+
   // Silence unused (TCP stub / arb gap counters)
   logic unused_gap;
   assign unused_gap = ^{arb_sse_gap, arb_szse_gap, arb_sse_dtcp, arb_szse_dtcp,
                         cam_drop_c, mcast_df, mcast_dr, dma_df,
-                        arb_sse_tcp_rdy, arb_szse_tcp_rdy, merge_s2_rdy};
+                        arb_sse_tcp_rdy, arb_szse_tcp_rdy, merge_s2_rdy,
+                        mcast_ev_ready, dma_ev_ready};
 
 endmodule

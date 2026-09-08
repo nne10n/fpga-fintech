@@ -10,6 +10,8 @@
 //         Payload = entire event_t as 64 LE bytes (event[7:0] first).
 //         UDP checksum = 0; IPv4 header checksum computed in RTL.
 //         No VLAN, no FCS. Store-and-forward one frame.
+// P1   : cfg_ttl_default (def 1), RFC1112 DA map (cfg_map_en), SA/DA/MAC
+//         gating + sticky errs; IP hdr csum follows TTL.
 // -----------------------------------------------------------------------------
 `timescale 1ns / 1ps
 `default_nettype none
@@ -38,6 +40,8 @@ module mcast_eng
   input  logic [31:0]  i_cfg_dst_ip,
   input  logic [15:0]  i_cfg_udp_sport,
   input  logic [15:0]  i_cfg_udp_dport,
+  input  logic [7:0]   i_cfg_ttl_default,
+  input  logic         i_cfg_map_en,
   input  logic [7:0]   i_cfg_ch_mask,
   input  logic [15:0]  i_cfg_period,
   input  logic [15:0]  i_cfg_refill,
@@ -47,6 +51,8 @@ module mcast_eng
   output logic [31:0]  o_tx_ok,
   output logic [31:0]  o_drop_filt,
   output logic [31:0]  o_drop_rate,
+  output logic         o_err_addr_sticky,
+  output logic         o_err_mac_mismatch,
   (* keep = "true" *) output logic o_dbg_cs_state,
   (* keep = "true" *) output logic o_dbg_err_sticky
 );
@@ -78,14 +84,15 @@ module mcast_eng
 
   function automatic logic [15:0] ipv4_hdr_csum(
       input logic [31:0] src_ip,
-      input logic [31:0] dst_ip
+      input logic [31:0] dst_ip,
+      input logic [7:0]  ttl
   );
     logic [31:0] sum;
     sum  = 32'h4500;
     sum += {16'd0, IP_TOTAL};
     sum += 32'h0000;
     sum += 32'h0000;
-    sum += 32'h4011;
+    sum += {16'd0, ttl, 8'h11};
     sum += {16'd0, src_ip[31:16]};
     sum += {16'd0, src_ip[15:0]};
     sum += {16'd0, dst_ip[31:16]};
@@ -103,6 +110,8 @@ module mcast_eng
   state_e      cs_state;
   state_e      ns_state;
   logic        r_err_sticky;
+  logic        r_err_addr_sticky;
+  logic        r_err_mac_mismatch;
   logic [3:0]  r_beat;
   logic [63:0] r_frame [0:N_BEATS-1];
   logic [7:0]  r_keep  [0:N_BEATS-1];
@@ -113,12 +122,20 @@ module mcast_eng
   logic [31:0] r_drop_filt;
   logic [31:0] r_drop_rate;
 
-  event_t w_ev_in;
-  logic   w_filt_ok;
-  logic   w_rate_unlimited;
-  logic   w_rate_ok;
-  logic   w_busy;
-  logic   w_accept;
+  event_t      w_ev_in;
+  logic        w_filt_ok;
+  logic        w_rate_unlimited;
+  logic        w_rate_ok;
+  logic        w_busy;
+  logic        w_accept;
+  logic [47:0] w_mapped_mac;
+  logic [47:0] w_tx_dst_mac;
+  logic        w_da_is_mcast;
+  logic        w_sa_ok;
+  logic        w_mac_ok;
+  logic        w_addr_ok;
+  logic        w_hdr_ok;
+  logic [7:0]  w_ttl;
 
   assign w_ev_in          = event_t'(i_s_event_tdata);
   assign w_filt_ok        = (w_ev_in.symbol_id < 16'(CAM_DEPTH))
@@ -128,17 +145,32 @@ module mcast_eng
   assign w_rate_unlimited = (i_cfg_period == 16'd0);
   assign w_rate_ok        = w_rate_unlimited || (r_tokens != 16'd0);
   assign w_busy           = (cs_state != ST_IDLE);
-  assign w_accept         = i_s_event_tvalid && w_filt_ok && w_rate_ok && !w_busy;
 
-  assign o_tx_ok          = r_tx_ok;
-  assign o_drop_filt      = r_drop_filt;
-  assign o_drop_rate      = r_drop_rate;
-  assign o_m_tvalid       = (cs_state == ST_TX);
-  assign o_m_tdata        = r_frame[r_beat];
-  assign o_m_tkeep        = r_keep[r_beat];
-  assign o_m_tlast        = (r_beat == 4'(N_BEATS - 1));
-  assign o_dbg_cs_state   = cs_state;
-  assign o_dbg_err_sticky = r_err_sticky;
+  // RFC1112 map + SA/DA legality (P1). SPEC: udp-mcast-tx-design.md §4.3
+  assign w_mapped_mac = {24'h01005E, 1'b0, i_cfg_dst_ip[22:0]};
+  assign w_tx_dst_mac = i_cfg_map_en ? w_mapped_mac : i_cfg_dst_mac;
+  assign w_da_is_mcast = (i_cfg_dst_ip[31:28] == 4'hE);
+  assign w_sa_ok       = (i_cfg_src_ip[31:28] != 4'hE);
+  assign w_mac_ok      = i_cfg_map_en ? 1'b1
+                       : (i_cfg_dst_mac == w_mapped_mac);
+  assign w_addr_ok     = w_da_is_mcast && w_sa_ok;
+  assign w_hdr_ok      = w_addr_ok && w_mac_ok;
+  assign w_ttl         = (i_cfg_ttl_default == 8'd0) ? 8'd1 : i_cfg_ttl_default;
+
+  assign w_accept         = i_s_event_tvalid && w_filt_ok && w_rate_ok
+                            && !w_busy && w_hdr_ok;
+
+  assign o_tx_ok            = r_tx_ok;
+  assign o_drop_filt        = r_drop_filt;
+  assign o_drop_rate        = r_drop_rate;
+  assign o_err_addr_sticky  = r_err_addr_sticky;
+  assign o_err_mac_mismatch = r_err_mac_mismatch;
+  assign o_m_tvalid         = (cs_state == ST_TX);
+  assign o_m_tdata          = r_frame[r_beat];
+  assign o_m_tkeep          = r_keep[r_beat];
+  assign o_m_tlast          = (r_beat == 4'(N_BEATS - 1));
+  assign o_dbg_cs_state     = cs_state;
+  assign o_dbg_err_sticky   = r_err_sticky;
 
   // Register current FSM state.
   // SPEC: module-design-v1.md §3.8
@@ -155,7 +187,7 @@ module mcast_eng
     ns_state = cs_state;
     case (cs_state)
       ST_IDLE: begin
-        if (i_s_event_tvalid && w_filt_ok && w_rate_ok)
+        if (i_s_event_tvalid && w_filt_ok && w_rate_ok && w_hdr_ok)
           ns_state = ST_TX;
       end
       ST_TX: begin
@@ -205,7 +237,7 @@ module mcast_eng
   end
 
   // Build 106-byte Eth/IPv4/UDP frame, walk 14 TX beats, saturating counters.
-  // SPEC: module-design-v1.md §3.8
+  // SPEC: module-design-v1.md §3.8; udp-mcast-tx-p1-impl.md §2
   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
     automatic int i, bi, base, nb, j;
     automatic logic [7:0]  fb [0:FRAME_BYTES-1];
@@ -227,13 +259,13 @@ module mcast_eng
       if (i_s_event_tvalid && w_filt_ok && (!w_rate_ok || w_busy))
         r_drop_rate <= sat_inc(r_drop_rate);
       if (w_accept) begin
-        csum = ipv4_hdr_csum(i_cfg_src_ip, i_cfg_dst_ip);
-        fb[0]  = i_cfg_dst_mac[47:40];
-        fb[1]  = i_cfg_dst_mac[39:32];
-        fb[2]  = i_cfg_dst_mac[31:24];
-        fb[3]  = i_cfg_dst_mac[23:16];
-        fb[4]  = i_cfg_dst_mac[15:8];
-        fb[5]  = i_cfg_dst_mac[7:0];
+        csum = ipv4_hdr_csum(i_cfg_src_ip, i_cfg_dst_ip, w_ttl);
+        fb[0]  = w_tx_dst_mac[47:40];
+        fb[1]  = w_tx_dst_mac[39:32];
+        fb[2]  = w_tx_dst_mac[31:24];
+        fb[3]  = w_tx_dst_mac[23:16];
+        fb[4]  = w_tx_dst_mac[15:8];
+        fb[5]  = w_tx_dst_mac[7:0];
         fb[6]  = i_cfg_src_mac[47:40];
         fb[7]  = i_cfg_src_mac[39:32];
         fb[8]  = i_cfg_src_mac[31:24];
@@ -250,7 +282,7 @@ module mcast_eng
         fb[19] = 8'h00;
         fb[20] = 8'h00;
         fb[21] = 8'h00;
-        fb[22] = 8'h40;
+        fb[22] = w_ttl;
         fb[23] = 8'h11;
         fb[24] = csum[15:8];
         fb[25] = csum[7:0];
@@ -299,13 +331,22 @@ module mcast_eng
     end
   end
 
-  // Sticky illegal-state flag.
-  // SPEC: module-design-v1.md §3.8
+  // Sticky illegal-state flag + P1 addr/mac stickies.
+  // SPEC: module-design-v1.md §3.8; udp-mcast-tx-p1-impl.md §2.1
   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
-    if (!sys_rst_n)
-      r_err_sticky <= 1'b0;
-    else if ((cs_state != ST_IDLE) && (cs_state != ST_TX))
-      r_err_sticky <= 1'b1;
+    if (!sys_rst_n) begin
+      r_err_sticky        <= 1'b0;
+      r_err_addr_sticky   <= 1'b0;
+      r_err_mac_mismatch  <= 1'b0;
+    end else begin
+      if ((cs_state != ST_IDLE) && (cs_state != ST_TX))
+        r_err_sticky <= 1'b1;
+      // Latch sticky on filt-pass event that fails header legality
+      if (i_s_event_tvalid && w_filt_ok && !w_addr_ok)
+        r_err_addr_sticky <= 1'b1;
+      if (i_s_event_tvalid && w_filt_ok && !w_mac_ok)
+        r_err_mac_mismatch <= 1'b1;
+    end
   end
 
 endmodule
