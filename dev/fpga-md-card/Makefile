@@ -23,7 +23,7 @@ SIM             ?= verilator
 TOPLEVEL_LANG   ?= verilog
 WAVES           ?= 0
 
-export PYTHONPATH := $(ROOT)/tb_push:$(ROOT)/tb:$(ROOT)/tb_x1100:$(ROOT)/tb_l1:$(ROOT)/tb_book_push:$(PYTHONPATH)
+export PYTHONPATH := $(ROOT)/tb:$(ROOT)/tb_x1100:$(ROOT)/tb_l1:$(PYTHONPATH)
 export COCOTB_REDUCED_LOG_FMT := 1
 
 EXTRA_ARGS += -Wall -Wno-DECLFILENAME -Wno-UNUSEDPARAM -Wno-UNUSEDSIGNAL
@@ -40,7 +40,7 @@ venv:
 	@test -x $(PYTHON) || python3 -m venv $(VENV)
 	@$(PYTHON) -m pip -q install -r $(ROOT)/requirements.txt
 
-.PHONY: sim sim-udp sim-dec sim-dec-sse sim-dec-fast sim-arb sim-cam sim-mcast sim-dma sim-top sim-x1100 sim-book sim-book-push-hook sim-x1100-book sim-l1 sim-l0-mem sim-push sim-book-push
+.PHONY: sim sim-udp sim-dec sim-dec-sse sim-dec-fast sim-arb sim-cam sim-mcast sim-dma sim-top sim-x1100 sim-book sim-x1100-book sim-l1
 sim: sim-udp sim-dec sim-dec-sse sim-dec-fast sim-arb sim-cam sim-mcast sim-dma sim-top
 
 sim-udp: venv
@@ -180,13 +180,7 @@ sim-top: venv
 
 
 # Book RTL shared by x1100 (ENABLE_BOOK) and unit TB
-# Default excludes push top (USE_BOOK_PUSH=0) so sim-book stays light.
-BOOK_RTL := $(ROOT)/rtl/book_pkg.sv $(ROOT)/rtl/hot_cam.sv $(ROOT)/rtl/order_cache.sv \
-	$(ROOT)/rtl/l1_cmd_stub.sv $(ROOT)/rtl/l1_ddr_engine.sv $(ROOT)/rtl/sim/axi_ddr_model.sv \
-	$(ROOT)/rtl/book_engine.sv
-# Extra sources when elaborating USE_BOOK_PUSH=1
-BOOK_PUSH_EXTRA := $(ROOT)/rtl/l0_top10_mem.sv $(ROOT)/rtl/book_push_engine.sv \
-	$(ROOT)/rtl/snap_fsm.sv $(ROOT)/rtl/refill_ctrl.sv $(ROOT)/rtl/book_push_refill_top.sv
+BOOK_RTL := $(ROOT)/rtl/book_pkg.sv $(ROOT)/rtl/hot_cam.sv $(ROOT)/rtl/order_cache.sv $(ROOT)/rtl/l1_cmd_stub.sv $(ROOT)/rtl/l1_ddr_engine.sv $(ROOT)/rtl/sim/axi_ddr_model.sv $(ROOT)/rtl/book_engine.sv
 
 .PHONY: sim-x1100 sim-book
 sim-x1100: venv
@@ -219,23 +213,6 @@ sim-book: venv
 		VERILATOR_BIN_DIR=$(VERILATOR_BIN_DIR) \
 		PYTHON_BIN=$(PYTHON) \
 		SIM_BUILD=$(ROOT)/sim_build/book_engine
-
-# Optional: book_engine with USE_BOOK_PUSH=1 (light PUSH_N_SYM=64)
-.PHONY: sim-book-push-hook
-sim-book-push-hook: venv
-	$(MAKE) -f $(shell $(VENV)/bin/cocotb-config --makefiles)/Makefile.sim \
-		SIM=$(SIM) \
-		TOPLEVEL_LANG=$(TOPLEVEL_LANG) \
-		VERILOG_SOURCES="$(ROOT)/rtl/md_pkg.sv $(BOOK_RTL) $(BOOK_PUSH_EXTRA)" \
-		TOPLEVEL=book_engine \
-		MODULE=test_book_engine \
-		COCOTB_TOPLEVEL=book_engine \
-		COCOTB_TEST_MODULES=test_book_engine \
-		EXTRA_ARGS="$(EXTRA_ARGS) -GUSE_BOOK_PUSH=1 -GPUSH_N_SYM=64" \
-		VERILATOR_TRACE=$(VERILATOR_TRACE) \
-		VERILATOR_BIN_DIR=$(VERILATOR_BIN_DIR) \
-		PYTHON_BIN=$(PYTHON) \
-		SIM_BUILD=$(ROOT)/sim_build/book_engine_push
 
 # x1100 with ENABLE_BOOK=1 + book-focused TB
 sim-x1100-book: venv
@@ -273,76 +250,9 @@ sim-l1: venv
 		PYTHON_BIN=$(PYTHON) \
 		SIM_BUILD=$(ROOT)/sim_build/l1_ddr
 
-
-
-# P1.0 L0 Top-10 4-bank mem (N_SYM_P=32 for light sim)
-L0_MEM_RTL := $(ROOT)/rtl/md_pkg.sv $(ROOT)/rtl/book_pkg.sv $(ROOT)/rtl/l0_top10_mem.sv
-
-.PHONY: sim-l0-mem
-sim-l0-mem: venv
-	$(MAKE) -f $(shell $(VENV)/bin/cocotb-config --makefiles)/Makefile.sim \
-		SIM=$(SIM) \
-		TOPLEVEL_LANG=$(TOPLEVEL_LANG) \
-		VERILOG_SOURCES="$(L0_MEM_RTL)" \
-		TOPLEVEL=l0_top10_mem \
-		MODULE=test_l0_top10_mem \
-		COCOTB_TOPLEVEL=l0_top10_mem \
-		COCOTB_TEST_MODULES=test_l0_top10_mem \
-		EXTRA_ARGS="$(EXTRA_ARGS) -GN_SYM_P=32" \
-		VERILATOR_TRACE=$(VERILATOR_TRACE) \
-		VERILATOR_BIN_DIR=$(VERILATOR_BIN_DIR) \
-		PYTHON_BIN=$(PYTHON) \
-		SIM_BUILD=$(ROOT)/sim_build/l0_top10_mem
-
-# P1.0 book_push_engine — RTL defaults DEPTH_REFILL/SNAP=64; sim overrides shallow
-PUSH_RTL := $(ROOT)/rtl/md_pkg.sv $(ROOT)/rtl/book_pkg.sv $(ROOT)/rtl/book_push_engine.sv
-
-.PHONY: sim-push
-sim-push: venv
-	$(MAKE) -f $(shell $(VENV)/bin/cocotb-config --makefiles)/Makefile.sim \
-		SIM=$(SIM) \
-		TOPLEVEL_LANG=$(TOPLEVEL_LANG) \
-		VERILOG_SOURCES="$(PUSH_RTL)" \
-		TOPLEVEL=book_push_engine \
-		MODULE=test_book_push_engine \
-		COCOTB_TOPLEVEL=book_push_engine \
-		COCOTB_TEST_MODULES=test_book_push_engine \
-		EXTRA_ARGS="$(EXTRA_ARGS) -GDEPTH_RT=16 -GDEPTH_REFILL=8 -GDEPTH_SNAP=8" \
-		VERILATOR_TRACE=$(VERILATOR_TRACE) \
-		VERILATOR_BIN_DIR=$(VERILATOR_BIN_DIR) \
-		PYTHON_BIN=$(PYTHON) \
-		SIM_BUILD=$(ROOT)/sim_build/book_push_engine
-
-# book-push-refill-v2 P2: real book_push_refill_top via TB glue
-BOOK_PUSH_RTL := $(ROOT)/rtl/md_pkg.sv $(ROOT)/rtl/book_pkg.sv \
-	$(ROOT)/rtl/l0_top10_mem.sv \
-	$(ROOT)/rtl/book_push_engine.sv \
-	$(ROOT)/rtl/snap_fsm.sv \
-	$(ROOT)/rtl/refill_ctrl.sv \
-	$(ROOT)/rtl/book_push_refill_top.sv \
-	$(ROOT)/rtl/sim/axi_ddr_model.sv \
-	$(ROOT)/tb_book_push/book_push_refill_tb_glue.sv \
-	$(ROOT)/tb_book_push/tb_book_push_top.sv
-
-.PHONY: sim-book-push
-sim-book-push: venv
-	$(MAKE) -f $(shell $(VENV)/bin/cocotb-config --makefiles)/Makefile.sim \
-		SIM=$(SIM) \
-		TOPLEVEL_LANG=$(TOPLEVEL_LANG) \
-		VERILOG_SOURCES="$(BOOK_PUSH_RTL)" \
-		TOPLEVEL=tb_book_push_top \
-		MODULE=test_p2_gap_refill,test_p2_timer_snap,test_p2_rt_preempt,test_p2_refill_seq,test_p2_skip_empty \
-		COCOTB_TOPLEVEL=tb_book_push_top \
-		COCOTB_TEST_MODULES=test_p2_gap_refill,test_p2_timer_snap,test_p2_rt_preempt,test_p2_refill_seq,test_p2_skip_empty \
-		EXTRA_ARGS="$(EXTRA_ARGS)" \
-		VERILATOR_TRACE=$(VERILATOR_TRACE) \
-		VERILATOR_BIN_DIR=$(VERILATOR_BIN_DIR) \
-		PYTHON_BIN=$(PYTHON) \
-		SIM_BUILD=$(ROOT)/sim_build/book_push
-
 .PHONY: clean
 clean:
-	rm -rf sim_build results.xml dump.fst dump.vcd __pycache__ tb/__pycache__ tb_x1100/__pycache__ tb_l1/__pycache__ tb_push/__pycache__ tb_book_push/__pycache__
+	rm -rf sim_build results.xml dump.fst dump.vcd __pycache__ tb/__pycache__ tb_x1100/__pycache__ tb_l1/__pycache__
 
 .PHONY: help
 help:
@@ -358,11 +268,7 @@ help:
 	@echo "make sim-top      - md_rx_top integration"
 	@echo "make sim-x1100    - md_rx_top_x1100 32b SZSE A/B (ENABLE_BOOK=0)"
 	@echo "make sim-book     - book_engine L0 unit tests"
-	@echo "make sim-book-push-hook - book_engine USE_BOOK_PUSH=1 smoke"
 	@echo "make sim-x1100-book - x1100 with ENABLE_BOOK=1"
 	@echo "make sim-l1        - L1 DDR engine (axi model) tests"
-	@echo "make sim-l0-mem   - P1.0 l0_top10_mem 4-bank unit tests"
-	@echo "make sim-push     - P1.0 book_push_engine unit tests"
-	@echo "make sim-book-push - book_push P2 (book_push_refill_top via glue)"
 	@echo "make sim WAVES=1  - run with FST waveform dump"
 	@echo "make clean        - remove build artefacts"

@@ -71,23 +71,23 @@ def code_from_ascii6(s: str) -> int:
 
 
 async def reset_dec(dut, cycles: int = 5):
-    dut.sys_rst_n.value = 0
-    dut.i_s_tdata.value = 0
-    dut.i_s_tkeep.value = 0
-    dut.i_s_tvalid.value = 0
-    dut.i_s_tlast.value = 0
-    dut.i_s_tuser.value = 0
-    dut.i_m_event_tready.value = 1
+    dut.rst_n.value = 0
+    dut.s_axis_tdata.value = 0
+    dut.s_axis_tkeep.value = 0
+    dut.s_axis_tvalid.value = 0
+    dut.s_axis_tlast.value = 0
+    dut.s_axis_tuser.value = 0
+    dut.m_event_tready.value = 1
     for _ in range(cycles):
-        await RisingEdge(dut.sys_clk)
-    dut.sys_rst_n.value = 1
-    await RisingEdge(dut.sys_clk)
+        await RisingEdge(dut.clk)
+    dut.rst_n.value = 1
+    await RisingEdge(dut.clk)
 
 
 async def _init(dut):
-    cocotb.start_soon(Clock(dut.sys_clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dec(dut)
-    await RisingEdge(dut.sys_clk)
+    await RisingEdge(dut.clk)
 
 
 def _ctr(dut, name: str) -> int:
@@ -96,16 +96,16 @@ def _ctr(dut, name: str) -> int:
 
 async def recv_event(dut, timeout_cycles: int = 500) -> tuple[int, int]:
     for _ in range(timeout_cycles):
-        await RisingEdge(dut.sys_clk)
-        if int(dut.o_m_event_tvalid.value) == 1 and int(dut.i_m_event_tready.value) == 1:
-            return int(dut.o_m_event_tdata.value), int(dut.o_m_event_tlast.value)
+        await RisingEdge(dut.clk)
+        if int(dut.m_event_tvalid.value) == 1 and int(dut.m_event_tready.value) == 1:
+            return int(dut.m_event_tdata.value), int(dut.m_event_tlast.value)
     raise TimeoutError("no event received")
 
 
 async def expect_no_event(dut, cycles: int = 40) -> bool:
     for _ in range(cycles):
-        await RisingEdge(dut.sys_clk)
-        if int(dut.o_m_event_tvalid.value) == 1:
+        await RisingEdge(dut.clk)
+        if int(dut.m_event_tvalid.value) == 1:
             return False
     return True
 
@@ -123,8 +123,8 @@ async def test_fast_happy_path(dut):
     payload = build_synth_fast(pmap, code, seq, px, qty)
     assert len(payload) == MIN_LEN
 
-    ok0 = _ctr(dut, "o_msg_ok")
-    bad0 = _ctr(dut, "o_msg_bad")
+    ok0 = _ctr(dut, "msg_ok")
+    bad0 = _ctr(dut, "msg_bad")
     tuser = pack_pay_tuser(port_id=0, sop_ts=ts)
 
     send = cocotb.start_soon(axis_send_frame(dut, payload, tuser=tuser))
@@ -159,10 +159,10 @@ async def test_fast_happy_path(dut):
     assert ev["flags"] == 0, ev
     assert ev["side"] == 0, ev
     assert ev["order_id"] == 0, ev
-    assert int(dut.o_m_code.value) == code_from_ascii6(code), hex(int(dut.o_m_code.value))
-    await RisingEdge(dut.sys_clk)
-    assert _ctr(dut, "o_msg_ok") == ok0 + 1
-    assert _ctr(dut, "o_msg_bad") == bad0
+    assert int(dut.m_code.value) == code_from_ascii6(code), hex(int(dut.m_code.value))
+    await RisingEdge(dut.clk)
+    assert _ctr(dut, "msg_ok") == ok0 + 1
+    assert _ctr(dut, "msg_bad") == bad0
 
 
 @cocotb.test()
@@ -172,14 +172,14 @@ async def test_fast_short_bad(dut):
     short = build_synth_fast(1, "000001", 1, 100, 10)[:10]
     assert len(short) < MIN_LEN
 
-    ok0 = _ctr(dut, "o_msg_ok")
-    bad0 = _ctr(dut, "o_msg_bad")
+    ok0 = _ctr(dut, "msg_ok")
+    bad0 = _ctr(dut, "msg_bad")
     await axis_send_frame(dut, short, tuser=pack_pay_tuser(sop_ts=1))
-    await RisingEdge(dut.sys_clk)
+    await RisingEdge(dut.clk)
     idle = await expect_no_event(dut, 40)
     assert idle, "unexpected event on short frame"
-    assert _ctr(dut, "o_msg_ok") == ok0
-    assert _ctr(dut, "o_msg_bad") == bad0 + 1
+    assert _ctr(dut, "msg_ok") == ok0
+    assert _ctr(dut, "msg_bad") == bad0 + 1
 
 
 @cocotb.test()
@@ -187,11 +187,11 @@ async def test_fast_garbage_partial_keep(dut):
     """Garbage 5-byte single-beat → msg_bad++."""
     await _init(dut)
     garbage = bytes([0xFF, 0x00, 0x11, 0x22, 0x33])
-    ok0 = _ctr(dut, "o_msg_ok")
-    bad0 = _ctr(dut, "o_msg_bad")
+    ok0 = _ctr(dut, "msg_ok")
+    bad0 = _ctr(dut, "msg_bad")
     await axis_send_frame(dut, garbage, tuser=pack_pay_tuser(sop_ts=2))
-    await RisingEdge(dut.sys_clk)
+    await RisingEdge(dut.clk)
     idle = await expect_no_event(dut, 40)
     assert idle, "unexpected event on garbage"
-    assert _ctr(dut, "o_msg_ok") == ok0
-    assert _ctr(dut, "o_msg_bad") == bad0 + 1
+    assert _ctr(dut, "msg_ok") == ok0
+    assert _ctr(dut, "msg_bad") == bad0 + 1

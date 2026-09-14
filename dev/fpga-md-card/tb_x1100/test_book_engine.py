@@ -43,8 +43,6 @@ async def reset(dut, n=5):
     dut.book_clear.value = 0
     dut.dbg_hot_id.value = 1
     dut.dbg_side.value = SIDE_BID
-    if hasattr(dut, "i_push_dma_ready"):
-        dut.i_push_dma_ready.value = 1
     for _ in range(n):
         await RisingEdge(dut.clk)
     dut.rst_n.value = 1

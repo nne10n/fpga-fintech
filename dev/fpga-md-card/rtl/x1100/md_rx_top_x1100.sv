@@ -67,8 +67,6 @@ module md_rx_top_x1100
   input  logic [7:0]   cfg_ch_mask,
   input  logic [15:0]  cfg_mcast_period,
   input  logic [15:0]  cfg_mcast_refill,
-  input  logic [7:0]   cfg_mcast_ttl = 8'd1,
-  input  logic         cfg_mcast_map_en = 1'b1,
   input  logic         filt_we,
   input  logic [12:0]  filt_addr,
   input  logic         filt_bit,
@@ -123,11 +121,7 @@ module md_rx_top_x1100
   output logic [31:0]  telem_cam_hit,
   output logic [31:0]  telem_cam_miss,
   output logic [31:0]  telem_mcast_tx,
-  output logic [31:0]  telem_dma_tx,
-
-  // ---- mcast sticky (CSR RO / keep) ----
-  (* keep = "true" *) output logic telem_mcast_err_addr,
-  (* keep = "true" *) output logic telem_mcast_err_mac
+  output logic [31:0]  telem_dma_tx
 );
 
   // =========================================================================
@@ -150,10 +144,6 @@ module md_rx_top_x1100
   logic [2:0] strip_dbg_cs_nc   [0:1];
   logic       strip_dbg_err_nc  [0:1];
   logic       strip_dbg_ovfl_nc [0:1];
-  logic       mcast_dbg_cs_nc;
-  logic       mcast_dbg_err_nc;
-  logic       mcast_err_addr;
-  logic       mcast_err_mac;
   always_comb begin
     a_tu_fix = s_axis_a_tuser; a_tu_fix.port_id = 3'(NDPP_P_A);
     b_tu_fix = s_axis_b_tuser; b_tu_fix.port_id = 3'(NDPP_P_B);
@@ -161,58 +151,32 @@ module md_rx_top_x1100
 
   // Eth/IPv4/UDP cut-through strip, 32b port A. o_dbg_* left open on purpose.
   udp_strip #(.DATA_W(NDPP_AXIS_W)) u_strip_a (
-    .sys_clk(clk), // 时钟
-    .sys_rst_n(rst_n), // 复位(异步低)
-    .i_cfg_dst_mac(cfg_dst_mac), // 电平
-    .i_cfg_dst_ip(cfg_dst_ip), // 电平
-    .i_cfg_udp_dport(cfg_udp_dport), // 电平
-    .i_s_tdata(s_axis_a_tdata), // 握手
-    .i_s_tkeep(s_axis_a_tkeep), // 握手
-    .i_s_tvalid(s_axis_a_tvalid), // 握手
-    .i_s_tlast(s_axis_a_tlast), // 握手
-    .o_s_tready(s_axis_a_tready), // 握手
-    .i_s_tuser(a_tu_fix), // 握手
-    .o_m_tdata(pay_tdata[0]), // 握手
-    .o_m_tkeep(pay_tkeep[0]), // 握手
-    .o_m_tvalid(pay_tvalid[0]), // 握手
-    .o_m_tlast(pay_tlast[0]), // 握手
-    .i_m_tready(pay_tready[0]), // 握手
-    .o_m_tuser(pay_tuser[0]), // 握手
-    .o_drop_not_udp(st_nudp[0]), // 电平
-    .o_drop_opt(st_opt[0]), // 电平
-    .o_drop_filter(st_filt[0]), // 电平
-    .o_frames_ok(st_ok[0]), // 电平
-    .o_dbg_cs_state(strip_dbg_cs_nc[0]), // sticky
-    .o_dbg_err_sticky(strip_dbg_err_nc[0]), // sticky
-    .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[0]) // sticky
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s_axis_a_tdata), .i_s_tkeep(s_axis_a_tkeep),   // 握手
+    .i_s_tvalid(s_axis_a_tvalid), .i_s_tlast(s_axis_a_tlast),
+    .o_s_tready(s_axis_a_tready), .i_s_tuser(a_tu_fix),
+    .o_m_tdata(pay_tdata[0]), .o_m_tkeep(pay_tkeep[0]),       // 握手
+    .o_m_tvalid(pay_tvalid[0]), .o_m_tlast(pay_tlast[0]),
+    .i_m_tready(pay_tready[0]), .o_m_tuser(pay_tuser[0]),
+    .o_drop_not_udp(st_nudp[0]), .o_drop_opt(st_opt[0]),
+    .o_drop_filter(st_filt[0]), .o_frames_ok(st_ok[0]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[0]), .o_dbg_err_sticky(strip_dbg_err_nc[0]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[0])
   );
 
   // Eth/IPv4/UDP cut-through strip, 32b port B. o_dbg_* left open on purpose.
   udp_strip #(.DATA_W(NDPP_AXIS_W)) u_strip_b (
-    .sys_clk(clk), // 时钟
-    .sys_rst_n(rst_n), // 复位(异步低)
-    .i_cfg_dst_mac(cfg_dst_mac), // 电平
-    .i_cfg_dst_ip(cfg_dst_ip), // 电平
-    .i_cfg_udp_dport(cfg_udp_dport), // 电平
-    .i_s_tdata(s_axis_b_tdata), // 握手
-    .i_s_tkeep(s_axis_b_tkeep), // 握手
-    .i_s_tvalid(s_axis_b_tvalid), // 握手
-    .i_s_tlast(s_axis_b_tlast), // 握手
-    .o_s_tready(s_axis_b_tready), // 握手
-    .i_s_tuser(b_tu_fix), // 握手
-    .o_m_tdata(pay_tdata[1]), // 握手
-    .o_m_tkeep(pay_tkeep[1]), // 握手
-    .o_m_tvalid(pay_tvalid[1]), // 握手
-    .o_m_tlast(pay_tlast[1]), // 握手
-    .i_m_tready(pay_tready[1]), // 握手
-    .o_m_tuser(pay_tuser[1]), // 握手
-    .o_drop_not_udp(st_nudp[1]), // 电平
-    .o_drop_opt(st_opt[1]), // 电平
-    .o_drop_filter(st_filt[1]), // 电平
-    .o_frames_ok(st_ok[1]), // 电平
-    .o_dbg_cs_state(strip_dbg_cs_nc[1]), // sticky
-    .o_dbg_err_sticky(strip_dbg_err_nc[1]), // sticky
-    .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[1]) // sticky
+    .clk(clk), .rst_n(rst_n),                                 // 电平
+    .i_cfg_dst_mac(cfg_dst_mac), .i_cfg_dst_ip(cfg_dst_ip), .i_cfg_udp_dport(cfg_udp_dport), // 电平
+    .i_s_tdata(s_axis_b_tdata), .i_s_tkeep(s_axis_b_tkeep),   // 握手
+    .i_s_tvalid(s_axis_b_tvalid), .i_s_tlast(s_axis_b_tlast),
+    .o_s_tready(s_axis_b_tready), .i_s_tuser(b_tu_fix),
+    .o_m_tdata(pay_tdata[1]), .o_m_tkeep(pay_tkeep[1]),       // 握手
+    .o_m_tvalid(pay_tvalid[1]), .o_m_tlast(pay_tlast[1]),
+    .i_m_tready(pay_tready[1]), .o_m_tuser(pay_tuser[1]),
+    .o_drop_not_udp(st_nudp[1]), .o_drop_opt(st_opt[1]),
+    .o_drop_filter(st_filt[1]), .o_frames_ok(st_ok[1]),
+    .o_dbg_cs_state(strip_dbg_cs_nc[1]), .o_dbg_err_sticky(strip_dbg_err_nc[1]), .o_dbg_skid_ovfl(strip_dbg_ovfl_nc[1])
   );
 
   // =========================================================================
@@ -294,15 +258,6 @@ module md_rx_top_x1100
   generate
     if (ENABLE_BOOK) begin : g_book
       logic book_rdy;
-      // P1.4 hooks unused until USE_BOOK_PUSH / DMA sink wired
-      logic                b_rt_v_nc;
-      logic [N_SYM_AW-1:0] b_rt_sym_nc;
-      l0_top10_row_t       b_rt_row_nc;
-      logic                b_rf_v_nc;
-      refill_req_t         b_rf_nc;
-      logic                b_push_v_nc;
-      top10_msg_t          b_push_msg_nc;
-      logic [31:0]         b_push_tx_nc;
       book_engine u_book (
         .clk(clk), .rst_n(rst_n),
         .s_event_tdata(arb_tdata), .s_event_tvalid(arb_tvalid),
@@ -320,16 +275,8 @@ module md_rx_top_x1100
         .dbg_hot_id(7'd1), .dbg_side(SIDE_BID),
         .dbg_lvl0(dbg0), .dbg_lvl1(dbg1), .dbg_lvl2(dbg2), .dbg_lvl3(dbg3),
         .dbg_lvl4(dbg4), .dbg_lvl5(dbg5), .dbg_lvl6(dbg6), .dbg_lvl7(dbg7),
-        .dbg_lvl8(dbg8), .dbg_lvl9(dbg9),
-        .o_rt_valid(b_rt_v_nc), .o_rt_symbol(b_rt_sym_nc), .o_rt_row(b_rt_row_nc),
-        .o_refill_req_valid(b_rf_v_nc), .o_refill_req(b_rf_nc),
-        .o_push_dma_valid(b_push_v_nc), .o_push_dma_msg(b_push_msg_nc),
-        .i_push_dma_ready(1'b1), .o_push_tx_rt(b_push_tx_nc)
+        .dbg_lvl8(dbg8), .dbg_lvl9(dbg9)
       );
-      logic unused_p14;
-      assign unused_p14 = ^{b_rt_v_nc, b_rt_sym_nc, b_rt_row_nc.nonempty,
-                            b_rf_v_nc, b_rf_nc.symbol_id, b_push_v_nc,
-                            b_push_msg_nc.symbol_id, b_push_tx_nc};
       assign arb_tready   = book_rdy; // always 1
       assign cam_bank_sel = 1'b0;
       assign cam_hit_c    = 32'd0;
@@ -370,50 +317,36 @@ module md_rx_top_x1100
   assign m_book_tlast  = 1'b1;
 
   // =========================================================================
-  // Broadcast to mcast + dma
+  // Broadcast to mcast + dma. Role A: fanout tready stays 1; each engine
+  // always-ready and drops internally. Do not AND or forward dma ready.
+  // SPEC: docs/udp-mcast-tx-design.md (FROZEN)
   // =========================================================================
-  // Role A iron rule: never AND consumer readies back onto event_bus.
-  // mcast_eng / dma_pack keep s_event_tready≡1 and drop internally.
   logic mcast_ev_ready, dma_ev_ready;
   assign post_tready = 1'b1;
 
-  logic [31:0] mcast_tx_c, mcast_df, mcast_dr;
+  logic [31:0] mcast_tx_c, mcast_df, mcast_dr, mcast_dg, mcast_ns;
+  logic [47:0] mcast_da_stat;
+  logic [0:0]  mcast_dbg_cs;
+  logic        mcast_dbg_sticky;
   logic [31:0] dma_tx_c, dma_df;
 
-  // Per-client multicast TX (N=1). o_dbg_* left open on purpose.
   mcast_eng #(.CLIENT_ID(0)) u_mcast (
-    .sys_clk(clk), // 时钟
-    .sys_rst_n(rst_n), // 复位(异步低)
-    .i_s_event_tdata(post_tdata), // 握手
-    .i_s_event_tvalid(post_tvalid), // 握手
-    .i_s_event_tlast(post_tlast), // 握手
-    .o_s_event_tready(mcast_ev_ready), // 握手
-    .o_m_tdata(m_mcast_tdata), // 握手
-    .o_m_tkeep(m_mcast_tkeep), // 握手
-    .o_m_tvalid(m_mcast_tvalid), // 握手
-    .o_m_tlast(m_mcast_tlast), // 握手
-    .i_m_tready(m_mcast_tready), // 握手
-    .i_cfg_src_mac(cfg_mcast_src_mac), // 电平
-    .i_cfg_dst_mac(cfg_mcast_dst_mac), // 电平
-    .i_cfg_src_ip(cfg_mcast_src_ip), // 电平
-    .i_cfg_dst_ip(cfg_mcast_dst_ip), // 电平
-    .i_cfg_udp_sport(cfg_mcast_udp_sport), // 电平
-    .i_cfg_udp_dport(cfg_mcast_udp_dport), // 电平
-    .i_cfg_ttl_default(cfg_mcast_ttl), // 电平
-    .i_cfg_map_en(cfg_mcast_map_en), // 电平
-    .i_cfg_ch_mask(cfg_ch_mask), // 电平
-    .i_cfg_period(cfg_mcast_period), // 电平
-    .i_cfg_refill(cfg_mcast_refill), // 电平
-    .i_filt_we(filt_we), // 脉冲
-    .i_filt_addr(filt_addr), // 电平
-    .i_filt_bit(filt_bit), // 电平
-    .o_tx_ok(mcast_tx_c), // 电平
-    .o_drop_filt(mcast_df), // 电平
-    .o_drop_rate(mcast_dr), // 电平
-    .o_err_addr_sticky(mcast_err_addr), // sticky
-    .o_err_mac_mismatch(mcast_err_mac), // sticky
-    .o_dbg_cs_state(mcast_dbg_cs_nc), // sticky
-    .o_dbg_err_sticky(mcast_dbg_err_nc) // sticky
+    .sys_clk(clk), .sys_rst_n(rst_n),
+    .i_s_event_tdata(post_tdata), .i_s_event_tvalid(post_tvalid),
+    .i_s_event_tlast(post_tlast), .o_s_event_tready(mcast_ev_ready),
+    .o_m_axis_tdata(m_mcast_tdata), .o_m_axis_tkeep(m_mcast_tkeep),
+    .o_m_axis_tvalid(m_mcast_tvalid), .o_m_axis_tlast(m_mcast_tlast),
+    .i_m_axis_tready(m_mcast_tready),
+    .i_cfg_src_mac(cfg_mcast_src_mac), .i_cfg_dst_mac(cfg_mcast_dst_mac),
+    .i_cfg_src_ip(cfg_mcast_src_ip), .i_cfg_dst_ip(cfg_mcast_dst_ip),
+    .i_cfg_udp_sport(cfg_mcast_udp_sport), .i_cfg_udp_dport(cfg_mcast_udp_dport),
+    .i_cfg_ch_mask(cfg_ch_mask), .i_cfg_period(cfg_mcast_period),
+    .i_cfg_refill(cfg_mcast_refill),
+    .i_filt_we(filt_we), .i_filt_addr(filt_addr), .i_filt_bit(filt_bit),
+    .o_tx_ok(mcast_tx_c), .o_drop_filt(mcast_df), .o_drop_rate(mcast_dr),
+    .o_drop_gate(mcast_dg), .o_nosend(mcast_ns),
+    .o_stat_dst_mac(mcast_da_stat),
+    .o_dbg_cs_state(mcast_dbg_cs), .o_dbg_err_sticky(mcast_dbg_sticky)
   );
 
   dma_pack u_dma (
@@ -451,14 +384,12 @@ module md_rx_top_x1100
     .mcast_tx_c(telem_mcast_tx), .dma_tx_c(telem_dma_tx)
   );
 
-  assign telem_mcast_err_addr = mcast_err_addr;
-  assign telem_mcast_err_mac  = mcast_err_mac;
-
   logic unused_tie;
   assign unused_tie = ^{arb_gap, arb_dtcp, cam_drop_c, mcast_df, mcast_dr,
-                        dma_df, arb_tcp_rdy, hot_we, hot_addr, hot_code,
-                        hot_entry_valid, book_clear, dbg0, dbg1, dbg2, dbg3,
-                        dbg4, dbg5, dbg6, dbg7, dbg8, dbg9,
+                        mcast_dg, mcast_ns, mcast_da_stat, mcast_dbg_cs,
+                        mcast_dbg_sticky, dma_df, arb_tcp_rdy, hot_we, hot_addr,
+                        hot_code, hot_entry_valid, book_clear, dbg0, dbg1,
+                        dbg2, dbg3, dbg4, dbg5, dbg6, dbg7, dbg8, dbg9,
                         mcast_ev_ready, dma_ev_ready};
 
 endmodule

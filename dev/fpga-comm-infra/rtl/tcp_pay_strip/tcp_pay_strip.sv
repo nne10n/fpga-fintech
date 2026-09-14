@@ -5,6 +5,12 @@
 // Independent core. L2–L4 network frame in, TCP payload out, 64-bit AXIS.
 // Role A: o_s_axis_tready ≡ 1. Illegal frames drop + count.
 // Not a udp_strip / tcp_pay_stub.
+//
+// Refactor notes (behavior-preserving):
+//   * L2/L3/L4 byte offsets and well-known ethertypes/protocol values moved to
+//     named localparams (L2_BASE, L2_VLAN, HDR_MIN, ET_VLAN, ET_IPV4,
+//     IP_PROTO_TCP, P_MAX) instead of inline magic numbers. Parse logic is
+//     unchanged; only the constants are named.
 module tcp_pay_strip (
     input  wire             sys_clk,
     input  wire             sys_rst_n,
@@ -28,6 +34,18 @@ module tcp_pay_strip (
 );
 
     localparam integer P_MAX     = 2048;
+
+    // L2/L3/L4 byte offsets used by the parse block.
+    localparam [12:0] L2_BASE      = 13'd14;  // DA(6)+SA(6)+etype(2)
+    localparam [12:0] L2_VLAN      = 13'd18;  // +VLAN tag (4)
+    localparam [12:0] HDR_MIN      = 13'd54;  // 14 + 20 (IP) + 20 (TCP) minimum parseable
+    localparam [12:0] IP_HDR_MIN   = 13'd20;  // IHL>=5 → 20 bytes
+    localparam [12:0] TCP_HDR_MIN  = 13'd20;  // doff>=5 → 20 bytes
+    localparam [15:0] ET_VLAN      = 16'h8100;
+    localparam [15:0] ET_IPV4      = 16'h0800;
+    localparam [3:0]  IP_VER4      = 4'd4;
+    localparam [7:0]  IP_PROTO_TCP = 8'd6;
+
     localparam [1:0]   ST_IDLE   = 2'd0;
     localparam [1:0]   ST_TAKE   = 2'd1;
     localparam [1:0]   ST_PARSE  = 2'd2;
@@ -105,8 +123,8 @@ module tcp_pay_strip (
         w_parse_end   = 13'd0;
         w_et0         = 16'd0;
         w_et          = 16'd0;
-        w_l2          = 13'd14;
-        w_ip          = 13'd14;
+        w_l2          = L2_BASE;
+        w_ip          = L2_BASE;
         w_ihl         = 4'd0;
         w_iplen       = 13'd0;
         w_iptot       = 16'd0;
@@ -124,19 +142,19 @@ module tcp_pay_strip (
         w_b_ip9       = 8'd0;
         w_b_tcp12     = 8'd0;
 
-        if ((cs_state == ST_PARSE) && (r_wptr >= 13'd54)) begin
+        if ((cs_state == ST_PARSE) && (r_wptr >= HDR_MIN)) begin
             w_et0 = {r_frm[12], r_frm[13]};
-            if (w_et0 == 16'h8100) begin
-                w_l2 = 13'd18;
+            if (w_et0 == ET_VLAN) begin
+                w_l2 = L2_VLAN;
                 w_et = {r_frm[16], r_frm[17]};
             end else begin
-                w_l2 = 13'd14;
+                w_l2 = L2_BASE;
                 w_et = w_et0;
             end
             w_ip = w_l2;
-            if ((w_et == 16'h0800) && (r_wptr >= (w_ip + 13'd20))) begin
+            if ((w_et == ET_IPV4) && (r_wptr >= (w_ip + IP_HDR_MIN))) begin
                 w_b_ip0 = r_frm[w_ip];
-                if (w_b_ip0[7:4] == 4'h4) begin
+                if (w_b_ip0[7:4] == IP_VER4) begin
                     w_ihl   = w_b_ip0[3:0];
                     w_iplen = {9'd0, w_ihl, 2'b00};
                     w_b_ip2 = r_frm[w_ip + 13'd2];
@@ -148,11 +166,11 @@ module tcp_pay_strip (
                     w_frag  = {w_b_ip6, w_b_ip7};
                     w_tcp   = w_ip + w_iplen;
                     if ((w_ihl >= 4'd5) &&
-                        (w_b_ip9 == 8'd6) &&
+                        (w_b_ip9 == IP_PROTO_TCP) &&
                         (w_frag[12:0] == 13'd0) &&
                         (w_frag[13] == 1'b0) &&
-                        (w_iptot >= {3'd0, w_iplen} + 16'd20) &&
-                        (r_wptr >= (w_tcp + 13'd20))) begin
+                        (w_iptot >= {3'd0, w_iplen} + TCP_HDR_MIN) &&
+                        (r_wptr >= (w_tcp + TCP_HDR_MIN))) begin
                         w_b_tcp12 = r_frm[w_tcp + 13'd12];
                         w_doff    = w_b_tcp12[7:4];
                         w_tcplen  = {9'd0, w_doff, 2'b00};
@@ -188,7 +206,7 @@ module tcp_pay_strip (
             end
             ST_TAKE: begin
                 if (w_fire && i_s_axis_tlast) begin
-                    ns_state = (r_bad || (w_next_wptr > 13'd2048)) ? ST_IDLE : ST_PARSE;
+                    ns_state = (r_bad || (w_next_wptr > P_MAX)) ? ST_IDLE : ST_PARSE;
                 end
             end
             ST_PARSE: begin
@@ -234,7 +252,7 @@ module tcp_pay_strip (
             if ((cs_state == ST_EMIT) && (w_idx < w_pay_len)) begin
                 w_out_keep = w_out_keep | (8'd1 << i_b);
                 w_src = r_pay_off + w_idx;
-                if (w_src < 13'd2048) begin
+                if (w_src < P_MAX) begin
                     w_out_data = w_out_data | ({56'd0, r_frm[w_src]} << (i_b * 8));
                 end
             end
@@ -291,14 +309,14 @@ module tcp_pay_strip (
                 end
                 ST_TAKE: begin
                     if (w_fire && !r_busy_drop) begin
-                        if (w_next_wptr > 13'd2048) begin
+                        if (w_next_wptr > P_MAX) begin
                             o_fail_sticky <= 1'b1;
                             o_drop_cnt    <= o_drop_cnt + 32'd1;
                             r_bad         <= 1'b1;
                             r_wptr        <= 13'd0;
                         end else begin
                             for (bi = 0; bi < 8; bi = bi + 1) begin
-                                if ((bi[3:0] < w_beat_len) && ((r_wptr + bi[12:0]) < 13'd2048)) begin
+                                if ((bi[3:0] < w_beat_len) && ((r_wptr + bi[12:0]) < P_MAX)) begin
                                     r_frm[r_wptr + bi[12:0]] <= i_s_axis_tdata[bi*8 +: 8];
                                 end
                             end

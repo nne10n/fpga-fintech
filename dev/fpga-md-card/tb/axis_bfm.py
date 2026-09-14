@@ -16,9 +16,7 @@ def _sig(dut, *names):
 
 
 async def reset_dut(dut, cycles: int = 5):
-    clk = _sig(dut, "sys_clk", "clk")
-    rst = _sig(dut, "sys_rst_n", "rst_n")
-    rst.value = 0
+    dut.rst_n.value = 0
     _sig(dut, "i_s_tdata", "s_axis_tdata").value = 0
     _sig(dut, "i_s_tkeep", "s_axis_tkeep").value = 0
     _sig(dut, "i_s_tvalid", "s_axis_tvalid").value = 0
@@ -26,9 +24,9 @@ async def reset_dut(dut, cycles: int = 5):
     _sig(dut, "i_s_tuser", "s_axis_tuser").value = 0
     _sig(dut, "i_m_tready", "m_axis_tready").value = 1
     for _ in range(cycles):
-        await RisingEdge(clk)
-    rst.value = 1
-    await RisingEdge(clk)
+        await RisingEdge(dut.clk)
+    dut.rst_n.value = 1
+    await RisingEdge(dut.clk)
 
 
 def pack_tuser(port_id: int = 0, sop_ts: int = 0) -> int:
@@ -72,7 +70,7 @@ async def axis_send_frame(dut, frame: bytes, tuser: int = 0, probe_tready=None):
             _sig(dut, "i_s_tuser", "s_axis_tuser").value = tuser
             first = False
         while True:
-            await RisingEdge(_sig(dut, "sys_clk", "clk"))
+            await RisingEdge(dut.clk)
             rdy = int(_sig(dut, "o_s_tready", "s_axis_tready").value)
             if probe_tready is not None:
                 probe_tready.append(rdy)
@@ -91,7 +89,7 @@ async def axis_recv_frame(dut, timeout_cycles: int = 5000) -> tuple[bytes, int]:
     cycles = 0
     got = False
     while cycles < timeout_cycles:
-        await RisingEdge(_sig(dut, "sys_clk", "clk"))
+        await RisingEdge(dut.clk)
         cycles += 1
         if int(_sig(dut, "o_m_tvalid", "m_axis_tvalid").value) == 1 and int(
             _sig(dut, "i_m_tready", "m_axis_tready").value
@@ -114,7 +112,7 @@ async def axis_recv_frame(dut, timeout_cycles: int = 5000) -> tuple[bytes, int]:
 async def axis_expect_idle(dut, cycles: int = 20) -> bool:
     """Return True if m_axis_tvalid stayed 0 for `cycles` clocks."""
     for _ in range(cycles):
-        await RisingEdge(_sig(dut, "sys_clk", "clk"))
+        await RisingEdge(dut.clk)
         if int(_sig(dut, "o_m_tvalid", "m_axis_tvalid").value) == 1:
             return False
     return True

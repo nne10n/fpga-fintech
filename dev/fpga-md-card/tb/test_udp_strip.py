@@ -90,12 +90,12 @@ def build_udp_frame(
 
 
 async def _init(dut, cfg_dport: int = UDP_DPORT):
-    cocotb.start_soon(Clock(dut.sys_clk, 10, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     dut.i_cfg_dst_mac.value = CFG_MAC
     dut.i_cfg_dst_ip.value = CFG_IP
     dut.i_cfg_udp_dport.value = cfg_dport
     await reset_dut(dut)
-    await RisingEdge(dut.sys_clk)
+    await RisingEdge(dut.clk)
 
 
 def _ctr(dut, name: str) -> int:
@@ -191,7 +191,7 @@ async def test_cfg_udp_dport_zero_and_mismatch(dut):
 
     # Part B: cfg=0x1F40 drops other port
     dut.i_cfg_udp_dport.value = UDP_DPORT
-    await RisingEdge(dut.sys_clk)
+    await RisingEdge(dut.clk)
     f0 = _ctr(dut, "o_drop_filter")
     ok1 = _ctr(dut, "o_frames_ok")
     frame2 = build_udp_frame(payload, udp_dport=other)

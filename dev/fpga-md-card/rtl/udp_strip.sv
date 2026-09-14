@@ -13,29 +13,34 @@ module udp_strip
   parameter int DATA_W = 64,
   parameter int KEEP_W = DATA_W / 8
 ) (
-  input  logic        sys_clk,
+  input  logic        clk,
   /* verilator lint_off SYNCASYNCNET */
-  input  logic        sys_rst_n,
+  input  logic        rst_n,
   /* verilator lint_on SYNCASYNCNET */
+
   input  logic [47:0] i_cfg_dst_mac,
   input  logic [31:0] i_cfg_dst_ip,
   input  logic [15:0] i_cfg_udp_dport,
+
   input  logic [DATA_W-1:0] i_s_tdata,
   input  logic [KEEP_W-1:0] i_s_tkeep,
   input  logic              i_s_tvalid,
   input  logic              i_s_tlast,
   output logic              o_s_tready,
   input  eth_tuser_t        i_s_tuser,
+
   output logic [DATA_W-1:0] o_m_tdata,
   output logic [KEEP_W-1:0] o_m_tkeep,
   output logic              o_m_tvalid,
   output logic              o_m_tlast,
   input  logic              i_m_tready,
   output pay_tuser_t        o_m_tuser,
+
   output logic [31:0] o_drop_not_udp,
   output logic [31:0] o_drop_opt,
   output logic [31:0] o_drop_filter,
   output logic [31:0] o_frames_ok,
+
   (* keep = "true" *) output logic [2:0] o_dbg_cs_state,
   (* keep = "true" *) output logic       o_dbg_err_sticky,
   (* keep = "true" *) output logic       o_dbg_skid_ovfl
@@ -65,16 +70,6 @@ module udp_strip
 
   logic        w_s_fire;
   assign w_s_fire = i_s_tvalid && o_s_tready;
-
-  // Register current FSM state.
-  // SPEC: module-design-v1.md §3.1
-  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
-    if (!sys_rst_n)
-      cs_state <= ST_IDLE;
-    else
-      cs_state <= ns_state;
-  end
-
 
   logic [7:0]  r_hdr   [0:HDR_LEN-1];
   logic [5:0]  r_hdr_n;
@@ -127,6 +122,7 @@ module udp_strip
   logic        w_go_drop;
   logic [1:0]  w_why;
   logic        w_bp_fail;
+  logic        w_illegal_cs;
 
   logic        w_inc_not_udp;
   logic        w_inc_opt;
@@ -135,10 +131,14 @@ module udp_strip
 
   logic        w_ethertype_ipv4;
   logic        w_ip_v4;
+  logic        w_ihl_eq5;
   logic        w_ihl_gt5;
   logic        w_ihl_lt5;
   logic        w_proto_udp;
   logic        w_ulen_ge8;
+  logic        w_mac_ok;
+  logic        w_dip_ok;
+  logic        w_dport_ok;
   logic        w_filter_ok;
   logic [15:0] w_udp_plen;
 
@@ -148,6 +148,10 @@ module udp_strip
   logic [31:0] r_c_ok;
   logic        r_err_sticky;
   logic        r_skid_ovfl;
+
+  assign w_illegal_cs = (cs_state != ST_IDLE) && (cs_state != ST_HDR) &&
+                        (cs_state != ST_PASS) && (cs_state != ST_DRAIN) &&
+                        (cs_state != ST_DROP);
 
   assign o_drop_not_udp = r_c_not_udp;
   assign o_drop_opt     = r_c_opt;
@@ -275,19 +279,24 @@ module udp_strip
 
   assign w_ethertype_ipv4 = ({w_hdr[12], w_hdr[13]} == 16'h0800);
   assign w_ip_v4          = (w_hdr[14][7:4] == 4'd4);
+  assign w_ihl_eq5        = (w_hdr[14][3:0] == 4'd5);
   assign w_ihl_gt5        = (w_hdr[14][3:0] >  4'd5);
   assign w_ihl_lt5        = (w_hdr[14][3:0] <  4'd5);
   assign w_proto_udp      = (w_hdr[23] == 8'd17);
   assign w_ulen_ge8       = ({w_hdr[38], w_hdr[39]} >= 16'd8);
-  assign w_filter_ok = mac_accept(w_hdr[0], w_hdr[1], w_hdr[2], w_hdr[3], w_hdr[4], w_hdr[5])
-                       && ({w_hdr[30], w_hdr[31], w_hdr[32], w_hdr[33]} == i_cfg_dst_ip)
-                       && ((i_cfg_udp_dport == 16'd0)
-                           || ({w_hdr[36], w_hdr[37]} == i_cfg_udp_dport));
-  assign w_udp_plen = w_ulen_ge8 ? ({w_hdr[38], w_hdr[39]} - 16'd8) : 16'd0;
+  assign w_mac_ok         = mac_accept(w_hdr[0], w_hdr[1], w_hdr[2],
+                                       w_hdr[3], w_hdr[4], w_hdr[5]);
+  assign w_dip_ok         = ({w_hdr[30], w_hdr[31], w_hdr[32], w_hdr[33]} ==
+                             i_cfg_dst_ip);
+  assign w_dport_ok       = (i_cfg_udp_dport == 16'd0) ||
+                            ({w_hdr[36], w_hdr[37]} == i_cfg_udp_dport);
+  assign w_filter_ok      = w_mac_ok && w_dip_ok && w_dport_ok;
+  assign w_udp_plen       = w_ulen_ge8 ? ({w_hdr[38], w_hdr[39]} - 16'd8)
+                                       : 16'd0;
   // same priority as old classify_hdr: etype/ver/ihl<5/proto/ulen → 1;
   // ihl>5 → 2 even if proto bad; else filter → 3
-  assign w_why = (!w_ethertype_ipv4 || !w_ip_v4 || w_ihl_lt5
-                  || ((w_hdr[14][3:0] == 4'd5) && (!w_proto_udp || !w_ulen_ge8))) ? 2'd1 :
+  assign w_why = (!w_ethertype_ipv4 || !w_ip_v4 || w_ihl_lt5 ||
+                  (w_ihl_eq5 && (!w_proto_udp || !w_ulen_ge8))) ? 2'd1 :
                  w_ihl_gt5 ? 2'd2 :
                  (!w_filter_ok) ? 2'd3 : 2'd0;
   assign w_go_drop = w_hdr_just_done && (w_why != 2'd0);
@@ -497,14 +506,16 @@ module udp_strip
           ns_state = ST_IDLE;
         else if (i_s_tvalid && w_bp_fail)
           ns_state = ST_DROP;
-        else if (i_s_tvalid && w_hdr_just_done
-                 && (!w_ethertype_ipv4 || !w_ip_v4 || w_ihl_lt5 || !w_proto_udp || !w_ulen_ge8))
+        else if (i_s_tvalid && w_hdr_just_done &&
+                 (!w_ethertype_ipv4 || !w_ip_v4 || w_ihl_lt5 ||
+                  !w_proto_udp || !w_ulen_ge8))
           ns_state = ST_DROP;
         else if (i_s_tvalid && w_hdr_just_done && w_ihl_gt5)
           ns_state = ST_DROP;
         else if (i_s_tvalid && w_hdr_just_done && !w_filter_ok)
           ns_state = ST_DROP;
-        else if (i_s_tvalid && w_hdr_just_done && (w_udp_plen == 16'd0 || w_pay_rem == 16'd0))
+        else if (i_s_tvalid && w_hdr_just_done &&
+                 (w_udp_plen == 16'd0 || w_pay_rem == 16'd0))
           ns_state = ST_DRAIN;
         else if (i_s_tvalid && w_hdr_just_done)
           ns_state = ST_PASS;
@@ -529,11 +540,20 @@ module udp_strip
     endcase
   end
 
+  // Register current FSM state.
+  // SPEC: module-design-v1.md §3.1
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n)
+      cs_state <= ST_IDLE;
+    else
+      cs_state <= ns_state;
+  end
+
   // Capture stripped header bytes, UDP dport, and SOP tuser.
   // SPEC: module-design-v1.md §3.1
-  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+  always_ff @(posedge clk) begin
     automatic int i;
-    if (!sys_rst_n) begin
+    if (!rst_n) begin
       r_hdr_n <= '0;
       r_dport <= '0;
       r_tuser <= '0;
@@ -550,9 +570,9 @@ module udp_strip
 
   // Payload realign pending bytes and same-clock 2-deep skid registers.
   // SPEC: module-design-v1.md §3.1
-  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
+  always_ff @(posedge clk) begin
     automatic int i;
-    if (!sys_rst_n) begin
+    if (!rst_n) begin
       r_pay_rem <= '0;
       r_pend_n  <= '0;
       r_ocount  <= '0;
@@ -583,8 +603,8 @@ module udp_strip
 
   // Saturating drop/ok counters and sticky illegal-state / skid-overflow flags.
   // SPEC: module-design-v1.md §3.1
-  always_ff @(posedge sys_clk or negedge sys_rst_n) begin
-    if (!sys_rst_n) begin
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
       r_c_not_udp  <= '0;
       r_c_opt      <= '0;
       r_c_filt     <= '0;
@@ -596,9 +616,7 @@ module udp_strip
       if (w_inc_opt)     r_c_opt     <= sat_inc(r_c_opt);
       if (w_inc_filt)    r_c_filt    <= sat_inc(r_c_filt);
       if (w_inc_ok)      r_c_ok      <= sat_inc(r_c_ok);
-      if ((cs_state != ST_IDLE) && (cs_state != ST_HDR) && (cs_state != ST_PASS)
-          && (cs_state != ST_DRAIN) && (cs_state != ST_DROP))
-        r_err_sticky <= 1'b1;
+      if (w_illegal_cs)  r_err_sticky <= 1'b1;
       if (w_bp_fail)     r_skid_ovfl  <= 1'b1;
     end
   end

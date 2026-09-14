@@ -44,15 +44,7 @@ module order_cache
   output level_t          dbg_lvl6,
   output level_t          dbg_lvl7,
   output level_t          dbg_lvl8,
-  output level_t          dbg_lvl9,
-
-  // P1.4 hooks: full Top-10 row pulse + dig-hole soft refill (no backpressure)
-  output logic            m_rt_valid,
-  output logic [HOT_AW:0] m_rt_hot_id,
-  output l0_top10_row_t   m_rt_row,
-  output logic            m_dig_hole,
-  output logic [1:0]      m_dig_side,
-  output logic [3:0]      m_dig_depth
+  output level_t          dbg_lvl9
 );
 
   assign cmd_ready = 1'b1;
@@ -65,19 +57,6 @@ module order_cache
   logic        delta_v_q;
   assign m_delta       = delta_q;
   assign m_delta_valid = delta_v_q;
-
-  logic            rt_v_q;
-  logic [HOT_AW:0] rt_hid_q;
-  l0_top10_row_t   rt_row_q;
-  logic            dig_v_q;
-  logic [1:0]      dig_side_q;
-  logic [3:0]      dig_depth_q;
-  assign m_rt_valid  = rt_v_q;
-  assign m_rt_hot_id = rt_hid_q;
-  assign m_rt_row    = rt_row_q;
-  assign m_dig_hole  = dig_v_q;
-  assign m_dig_side  = dig_side_q;
-  assign m_dig_depth = dig_depth_q;
 
   integer hi, oi, k, w;
 
@@ -116,60 +95,25 @@ module order_cache
     return hash_oid(oid) + ORDER_AW'(p);
   endfunction
 
-  // Pack both sides into l0_top10_row_t (lvl0 = best in LSBs)
-  function automatic l0_top10_row_t pack_row_from_tops(
-      input level_t      bid [0:TOP_N-1],
-      input level_t      ask [0:TOP_N-1],
-      input logic [31:0] seq,
-      input logic [63:0] ts_ns
-  );
-    l0_top10_row_t r;
-    r = '0;
-    r.seq   = seq;
-    r.ts_ns = ts_ns;
-    for (int li = 0; li < TOP_N; li++) begin
-      if (bid[li].valid) begin
-        r.bid_vld[li]              = 1'b1;
-        r.bid_px[li*64 +: 64]      = bid[li].px;
-        r.bid_qty[li*32 +: 32]     = bid[li].qty;
-      end
-      if (ask[li].valid) begin
-        r.ask_vld[li]              = 1'b1;
-        r.ask_px[li*64 +: 64]      = ask[li].px;
-        r.ask_qty[li*32 +: 32]     = ask[li].qty;
-      end
-    end
-    r.nonempty = (r.bid_vld != 10'b0) || (r.ask_vld != 10'b0);
-    return r;
-  endfunction
-
   always_ff @(posedge clk or negedge rst_n) begin
-    logic found, ok, placed, insert_ok, changed, dig;
+    logic found, ok, placed, insert_ok, changed;
     logic [ORDER_AW-1:0] idx, a;
     logic [HOT_AW-1:0] hidx;
     logic [1:0]  use_side;
     logic [63:0] use_px;
     logic [31:0] use_qty, newq;
-    logic [3:0]  found_i, ch_level, nfill, pos, depth_after;
+    logic [3:0]  found_i, ch_level, nfill, pos;
     logic        ch_valid;
     logic [63:0] ch_px;
     logic [31:0] ch_qty;
     level_t tmp [0:TOP_N-1];
     level_t sh  [0:TOP_N-1];
     level_t neu;
-    level_t bid_now [0:TOP_N-1];
-    level_t ask_now [0:TOP_N-1];
     int p;
 
     if (!rst_n) begin
-      delta_v_q   <= 1'b0;
-      delta_q     <= '0;
-      rt_v_q      <= 1'b0;
-      rt_hid_q    <= '0;
-      rt_row_q    <= '0;
-      dig_v_q     <= 1'b0;
-      dig_side_q  <= '0;
-      dig_depth_q <= '0;
+      delta_v_q <= 1'b0;
+      delta_q   <= '0;
       for (oi = 0; oi < N_ORD; oi++) begin
         slots[oi] <= '0;
       end
@@ -182,14 +126,8 @@ module order_cache
       if (m_delta_ready && delta_v_q)
         delta_v_q <= 1'b0;
 
-      // RT / dig-hole are single-cycle pulses
-      rt_v_q  <= 1'b0;
-      dig_v_q <= 1'b0;
-
       if (clear) begin
         delta_v_q <= 1'b0;
-        rt_v_q    <= 1'b0;
-        dig_v_q   <= 1'b0;
         for (oi = 0; oi < N_ORD; oi++)
           slots[oi].valid <= 1'b0;
         for (hi = 0; hi < N_H; hi++)
@@ -398,33 +336,6 @@ module order_cache
             delta_q.ts_ns       <= cmd_ts;
             delta_q.op          <= cmd_op;
             delta_v_q           <= 1'b1;
-
-            // Assemble post-update row (updated side from tmp; other side from mem)
-            for (k = 0; k < TOP_N; k++) begin
-              if (use_side == SIDE_BID) begin
-                bid_now[k] = tmp[k];
-                ask_now[k] = top_ask[hidx][k];
-              end else begin
-                bid_now[k] = top_bid[hidx][k];
-                ask_now[k] = tmp[k];
-              end
-            end
-            rt_v_q   <= 1'b1;
-            rt_hid_q <= cmd_hot_id;
-            rt_row_q <= pack_row_from_tops(bid_now, ask_now, cmd_seq, cmd_ts);
-
-            // Soft dig-hole: CXL/TRADE left visible depth < TOP_N
-            depth_after = '0;
-            for (k = 0; k < TOP_N; k++)
-              if (tmp[k].valid)
-                depth_after = depth_after + 4'd1;
-            dig = (cmd_op == OP_CXL || cmd_op == OP_TRADE) &&
-                  (depth_after < 4'(TOP_N));
-            if (dig) begin
-              dig_v_q     <= 1'b1;
-              dig_side_q  <= use_side;
-              dig_depth_q <= depth_after;
-            end
           end
         end
       end

@@ -47,8 +47,27 @@ module udp_mcast_tx (
     (* keep *) output logic [1:0] o_dbg_cs_state
 );
 
-    localparam integer P_HDR      = 42;
-    localparam integer P_MAX_PAY  = 511;
+    localparam integer P_HDR     = 42;   // Eth(14) + IP(20) + UDP(8)
+    localparam integer P_MAX_PAY = 511;
+
+    // Header byte offsets (big-endian; lane 0 = first on-wire byte).
+    localparam integer H_DA0     = 0;
+    localparam integer H_SA0     = 6;
+    localparam integer H_ETYPE0  = 12;  // 0x0800
+    localparam integer H_IPVER   = 14;  // 0x45
+    localparam integer H_IPTOT0  = 16;  // IP total length
+    localparam integer H_IPID0   = 18;  // 0x0000
+    localparam integer H_IPFLG0  = 20;  // flags/frag = 0
+    localparam integer H_IPTTL   = 22;
+    localparam integer H_IPPROTO = 23;  // 17 = UDP
+    localparam integer H_IPCS0   = 24;  // IPv4 header checksum
+    localparam integer H_SIP0    = 26;
+    localparam integer H_DIP0    = 30;
+    localparam integer H_SPORT0  = 34;
+    localparam integer H_DPORT0  = 36;
+    localparam integer H_UDPLEN0 = 38;
+    localparam integer H_UDPCSUM = 40;  // UDP checksum = 0
+
     localparam [1:0]   ST_IDLE    = 2'd0;
     localparam [1:0]   ST_TAKE    = 2'd1;
     localparam [1:0]   ST_ARM     = 2'd2;
@@ -115,6 +134,70 @@ module udp_mcast_tx (
         end
     endfunction
 
+    // Combinational header byte generator (idx ∈ [0,41]). Inputs are the
+    // locked SOP fields, stable across EMIT, so this reproduces the exact
+    // bytes the old r_hdr_bytes array staged during ARM.
+    function automatic [7:0] f_hdr_byte;
+        input [5:0]  idx;
+        input [47:0] da;
+        input [47:0] sa;
+        input [15:0] ip_tot;
+        input [7:0]  ttl;
+        input [15:0] ip_csum;
+        input [31:0] sip;
+        input [31:0] dip;
+        input [15:0] sport;
+        input [15:0] dport;
+        input [15:0] udp_len;
+        begin
+            case (idx)
+                H_DA0+0:     f_hdr_byte = da[47:40];
+                H_DA0+1:     f_hdr_byte = da[39:32];
+                H_DA0+2:     f_hdr_byte = da[31:24];
+                H_DA0+3:     f_hdr_byte = da[23:16];
+                H_DA0+4:     f_hdr_byte = da[15:8];
+                H_DA0+5:     f_hdr_byte = da[7:0];
+                H_SA0+0:     f_hdr_byte = sa[47:40];
+                H_SA0+1:     f_hdr_byte = sa[39:32];
+                H_SA0+2:     f_hdr_byte = sa[31:24];
+                H_SA0+3:     f_hdr_byte = sa[23:16];
+                H_SA0+4:     f_hdr_byte = sa[15:8];
+                H_SA0+5:     f_hdr_byte = sa[7:0];
+                H_ETYPE0:    f_hdr_byte = 8'h08;
+                H_ETYPE0+1:  f_hdr_byte = 8'h00;
+                H_IPVER:     f_hdr_byte = 8'h45;
+                H_IPVER+1:   f_hdr_byte = 8'h00;
+                H_IPTOT0:    f_hdr_byte = ip_tot[15:8];
+                H_IPTOT0+1:  f_hdr_byte = ip_tot[7:0];
+                H_IPID0:     f_hdr_byte = 8'h00;
+                H_IPID0+1:   f_hdr_byte = 8'h00;
+                H_IPFLG0:    f_hdr_byte = 8'h00;
+                H_IPFLG0+1:  f_hdr_byte = 8'h00;
+                H_IPTTL:     f_hdr_byte = ttl;
+                H_IPPROTO:   f_hdr_byte = 8'd17;
+                H_IPCS0:     f_hdr_byte = ip_csum[15:8];
+                H_IPCS0+1:   f_hdr_byte = ip_csum[7:0];
+                H_SIP0+0:    f_hdr_byte = sip[31:24];
+                H_SIP0+1:    f_hdr_byte = sip[23:16];
+                H_SIP0+2:    f_hdr_byte = sip[15:8];
+                H_SIP0+3:    f_hdr_byte = sip[7:0];
+                H_DIP0+0:    f_hdr_byte = dip[31:24];
+                H_DIP0+1:    f_hdr_byte = dip[23:16];
+                H_DIP0+2:    f_hdr_byte = dip[15:8];
+                H_DIP0+3:    f_hdr_byte = dip[7:0];
+                H_SPORT0:    f_hdr_byte = sport[15:8];
+                H_SPORT0+1:  f_hdr_byte = sport[7:0];
+                H_DPORT0:    f_hdr_byte = dport[15:8];
+                H_DPORT0+1:  f_hdr_byte = dport[7:0];
+                H_UDPLEN0:   f_hdr_byte = udp_len[15:8];
+                H_UDPLEN0+1: f_hdr_byte = udp_len[7:0];
+                H_UDPCSUM:   f_hdr_byte = 8'h00;
+                H_UDPCSUM+1: f_hdr_byte = 8'h00;
+                default:     f_hdr_byte = 8'h00;
+            endcase
+        end
+    endfunction
+
     wire [8:0]  w_mtu_eff      = (cfg_mtu_pay == 9'd0) ? 9'd511 : cfg_mtu_pay;
     wire [7:0]  w_ttl_csr      = (cfg_ttl_default == 8'd0) ? 8'd1 : cfg_ttl_default;
     wire [7:0]  w_ttl_meta     = (i_meta_ttl == 8'd0) ? 8'd1 : i_meta_ttl;
@@ -151,7 +234,6 @@ module udp_mcast_tx (
     logic [47:0] r_lock_sa;
     logic [8:0]  r_wptr;
     logic [7:0]  r_pay_bytes [0:510];
-    logic [7:0]  r_hdr_bytes [0:41];
     logic [15:0] r_emit_off;
     logic [15:0] r_frame_len;
 
@@ -207,6 +289,7 @@ module udp_mcast_tx (
     end
 
     integer i_b;
+    integer bi;
     logic [15:0] w_idx;
     logic [7:0]  w_out_keep;
     logic        w_out_last;
@@ -224,7 +307,11 @@ module udp_mcast_tx (
             if ((cs_state == ST_EMIT) && (w_idx < r_frame_len)) begin
                 w_out_keep = w_out_keep | (8'd1 << i_b);
                 if (w_idx < 16'd42) begin
-                    w_byte_sel = r_hdr_bytes[w_idx[5:0]];
+                    w_byte_sel = f_hdr_byte(w_idx[5:0],
+                                            w_da, r_lock_sa, w_ip_tot,
+                                            r_lock_ttl, w_ip_csum,
+                                            r_lock_src_ip, r_lock_dst_ip,
+                                            r_lock_sport, r_lock_dport, w_udp_len);
                 end else if ((w_idx - 16'd42) < 16'd511) begin
                     w_byte_sel = r_pay_bytes[(w_idx - 16'd42)];
                 end else begin
@@ -235,9 +322,6 @@ module udp_mcast_tx (
         end
         w_out_last = (cs_state == ST_EMIT) && ((r_emit_off + 16'd8) >= r_frame_len);
     end
-
-    integer bi;
-    integer hi;
 
     // process 3: datapath / outputs
     always_ff @(posedge sys_clk or negedge sys_rst_n) begin
@@ -265,9 +349,6 @@ module udp_mcast_tx (
             o_drop_cnt      <= 32'd0;
             o_nosend_cnt    <= 32'd0;
             o_tx_ok_cnt     <= 32'd0;
-            for (hi = 0; hi < P_HDR; hi = hi + 1) begin
-                r_hdr_bytes[hi] <= 8'd0;
-            end
         end else begin
             if (w_fire) begin
                 r_in_pkt <= !i_s_axis_tlast;
@@ -343,50 +424,11 @@ module udp_mcast_tx (
                 end
                 ST_ARM: begin
                     if (w_arm_pay_ok) begin
-                        r_hdr_bytes[0]  <= w_da[47:40];
-                        r_hdr_bytes[1]  <= w_da[39:32];
-                        r_hdr_bytes[2]  <= w_da[31:24];
-                        r_hdr_bytes[3]  <= w_da[23:16];
-                        r_hdr_bytes[4]  <= w_da[15:8];
-                        r_hdr_bytes[5]  <= w_da[7:0];
-                        r_hdr_bytes[6]  <= r_lock_sa[47:40];
-                        r_hdr_bytes[7]  <= r_lock_sa[39:32];
-                        r_hdr_bytes[8]  <= r_lock_sa[31:24];
-                        r_hdr_bytes[9]  <= r_lock_sa[23:16];
-                        r_hdr_bytes[10] <= r_lock_sa[15:8];
-                        r_hdr_bytes[11] <= r_lock_sa[7:0];
-                        r_hdr_bytes[12] <= 8'h08;
-                        r_hdr_bytes[13] <= 8'h00;
-                        r_hdr_bytes[14] <= 8'h45;
-                        r_hdr_bytes[15] <= 8'h00;
-                        r_hdr_bytes[16] <= w_ip_tot[15:8];
-                        r_hdr_bytes[17] <= w_ip_tot[7:0];
-                        r_hdr_bytes[18] <= 8'h00;
-                        r_hdr_bytes[19] <= 8'h00;
-                        r_hdr_bytes[20] <= 8'h00;
-                        r_hdr_bytes[21] <= 8'h00;
-                        r_hdr_bytes[22] <= r_lock_ttl;
-                        r_hdr_bytes[23] <= 8'd17;
-                        r_hdr_bytes[24] <= w_ip_csum[15:8];
-                        r_hdr_bytes[25] <= w_ip_csum[7:0];
-                        r_hdr_bytes[26] <= r_lock_src_ip[31:24];
-                        r_hdr_bytes[27] <= r_lock_src_ip[23:16];
-                        r_hdr_bytes[28] <= r_lock_src_ip[15:8];
-                        r_hdr_bytes[29] <= r_lock_src_ip[7:0];
-                        r_hdr_bytes[30] <= r_lock_dst_ip[31:24];
-                        r_hdr_bytes[31] <= r_lock_dst_ip[23:16];
-                        r_hdr_bytes[32] <= r_lock_dst_ip[15:8];
-                        r_hdr_bytes[33] <= r_lock_dst_ip[7:0];
-                        r_hdr_bytes[34] <= r_lock_sport[15:8];
-                        r_hdr_bytes[35] <= r_lock_sport[7:0];
-                        r_hdr_bytes[36] <= r_lock_dport[15:8];
-                        r_hdr_bytes[37] <= r_lock_dport[7:0];
-                        r_hdr_bytes[38] <= w_udp_len[15:8];
-                        r_hdr_bytes[39] <= w_udp_len[7:0];
-                        r_hdr_bytes[40] <= 8'h00;
-                        r_hdr_bytes[41] <= 8'h00;
-                        r_frame_len     <= 16'd42 + {7'd0, r_lock_paylen};
-                        r_emit_off      <= 16'd0;
+                        // Header bytes are derived combinationally during
+                        // EMIT (f_hdr_byte) from the locked SOP fields, so ARM
+                        // only needs to arm the frame length / emit pointer.
+                        r_frame_len <= 16'd42 + {7'd0, r_lock_paylen};
+                        r_emit_off  <= 16'd0;
                     end else begin
                         o_fail_sticky <= 1'b1;
                         o_drop_cnt    <= o_drop_cnt + 32'd1;

@@ -1,6 +1,6 @@
 # 通信基建 · 第一步（G1）— 调研/决策镜像
 
-来源：Origin `melon5253/fpga-comm-infra` HEAD `c2dc845`（2026-09-09）。
+来源：Origin `melon5253/fpga-comm-infra` HEAD `a884dd2`（2026-09-11，含 PR #4 行为保持 RTL 重构）。
 
 | 本目录文件 | 仓内路径 | 说明 |
 | --- | --- | --- |
@@ -9,4 +9,4 @@
 | `comm-infra-step1-design.md` | `design/comm-infra-step1-design.md` @ `efa5e23` | G1 FROZEN 总稿 |
 | `path-inventory.md` | `docs/path-inventory.md` | 路径与仿真门禁（含 G2 已知缺口） |
 
-完整 RTL / TB 见 [`../../dev/fpga-comm-infra/`](../../dev/fpga-comm-infra/)。
+完整 RTL / TB 见 [`../../dev/fpga-comm-infra/`](../../dev/fpga-comm-infra/)。最新 RTL 对应 Origin `a884dd2`（S2 组合头生成 + S1 具名 localparam）。
