@@ -2,7 +2,7 @@
 
 `nne10n` 的 FPGA 金融科技工作仓库：调研稿在 `research/`，开发和验证代码在 `dev/`。
 
-私有仓库。资料截止 2026-09。
+私有仓库。资料截止 2026-09-17。
 
 ## 调研
 
@@ -17,6 +17,7 @@
 | SV/Verilog 编码 Skill 调研 | [`research/sv-verilog-coding-skills/`](research/sv-verilog-coding-skills/) | 本地三件套够用性、公开基线对照与缺口一页纸 |
 | 可粘贴 IP/可复用模块登记册调研 | [`research/ip-module-registry/`](research/ip-module-registry/) | catalog 方案：index + modules md，供 RTL 例化 |
 | 通信基建第一步（G1） | [`research/comm-infra-g1/`](research/comm-infra-g1/) | 边界单、G1/G2 决策摘要、FROZEN 总稿；RTL 见 dev |
+| Origin 调研正式仓镜像（Research_everything） | [`research/Research_everything/`](research/Research_everything/) | IOPV、价位订单簿、bitmap/DDR/AXI、TCP 粘包分片、AI 图统一等；Origin `9f941d5` |
 
 每个主题里 `调研汇报.md` / `调研汇报-初稿.md` / `规格-v1.md` 是中文稿，`briefing.md` 是对应英文底稿（有则）。
 

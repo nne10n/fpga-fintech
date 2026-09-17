@@ -1,0 +1,10 @@
+{
+  "theme": "neutral",
+  "themeVariables": {
+    "fontFamily": "ui-sans-serif, system-ui, sans-serif"
+  },
+  "flowchart": {
+    "defaultRenderer": "dagre",
+    "htmlLabels": true
+  }
+}

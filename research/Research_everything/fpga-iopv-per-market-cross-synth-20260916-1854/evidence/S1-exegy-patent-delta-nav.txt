@@ -1,0 +1,39 @@
+# S1 — Exegy US20090182683 摘录：增量 Δ NAV 与 FPGA 流水线
+
+来源：https://www.freepatentsonline.com/y2009/0182683.html
+抓取：2026-09-16 18:54 Asia/Shanghai · ✅ 全文可读
+
+---
+
+## 关键 Claim 摘录
+
+Claim 6:
+> computing the NAV using a **delta calculation approach** that is based on a **contribution** of the financial instrument price information to the NAV.
+
+Claim 7:
+> adding the contribution to the retrieved **previous value** to thereby compute the NAV.
+
+Claim 10–11:
+> simultaneously computing a plurality of different NAVs … **bid NAV, an ask NAV, and a last NAV**.
+
+Claim 16:
+> calculating a **price delta** … generating a plurality of **delta events** … each delta event comprising the calculated price delta, a retrieved basket identifier, and a retrieved weight value.
+
+Claim 20:
+> storing a plurality of **pointers in a second table**, the pointers being indexed by a financial instrument identifier … pairs in the first table are indexed by the pointers.
+
+Claim 34:
+> the coprocessor comprises a **reconfigurable logic device** … **field programmable gate array (FPGA)**.
+
+Claim 24–28:
+> processing the NAV against a **triggering condition** … comparing **dissimilarity** with trigger threshold … determine whether the NAV is to be reported.
+
+---
+
+## 对本报告的支撑点
+
+- **[事实]** 硬件 basket/NAV 增量路径（Δ contribution + previous value）有公开专利背书，与本报告 B0「partial[leg]+=qty×Δpx」同构。
+- **[事实]** symbol 反向索引 + basket 正向表的双表结构有 Claim 20 直接描述。
+- **[事实]** bid/ask/last 多路 NAV 并行计算有 Claim 11 描述 — 对应可选第二/三路累加器。
+- **[事实]** 对外 dissemination 可与片内逐笔计算解耦（threshold gate），Claim 24–28。
+- **[推断]** 专利未声称具体 ns 延迟 — 本报告 **禁止写死 cycle/ns**。

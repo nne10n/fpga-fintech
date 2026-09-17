@@ -1,0 +1,44 @@
+%% =============================================================================
+%% BEFORE: 典型「未约束」输出（Gemini/Claude 漂移合成样例 · 推断）
+%% 问题：旧语法、ID 空格、classDef 主题、无 subgraph、边无语义
+%% =============================================================================
+
+%% --- BEFORE ---
+%% graph TD
+%%   User Client --> Purple API Gateway
+%%   Purple API Gateway --> Service A
+%%   Purple API Gateway --> Service B
+%%   Service A --> Database
+%%   Service B --> Database
+%%   Service A --> Cache
+%%   classDef purple fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95
+%%   class Purple API Gateway purple
+
+%% =============================================================================
+%% AFTER: Codex 锚点对齐（约束后）
+%% =============================================================================
+
+flowchart TD
+  subgraph client [Client]
+    web["Web App"]
+    cli["CLI"]
+  end
+
+  subgraph harness [Codex Harness]
+    appServer["App Server"]
+    threadMgr["Thread Manager"]
+  end
+
+  subgraph core [Codex Core]
+    session["Session Turn Loop"]
+    model["Responses API"]
+    tools["Tools / MCP"]
+  end
+
+  web --> appServer
+  cli --> appServer
+  appServer -->|"JSON-RPC"| threadMgr
+  threadMgr --> session
+  session --> model
+  session -->|"tool call"| tools
+  session -->|"events"| appServer

@@ -1,0 +1,28 @@
+flowchart TD
+  subgraph client [Client Surfaces]
+    web["Web App"]
+    vscode["VS Code Extension"]
+    tui["CLI TUI"]
+  end
+
+  subgraph harness [Codex Harness]
+    appServer["App Server"]
+    threadMgr["Thread Manager"]
+    msgProc["Message Processor"]
+  end
+
+  subgraph core [Codex Core]
+    session["Session Turn Loop"]
+    model["Responses API"]
+    tools["Tools / MCP"]
+  end
+
+  web -->|"JSON-RPC"| appServer
+  vscode --> appServer
+  tui --> appServer
+  appServer --> msgProc
+  msgProc --> threadMgr
+  threadMgr --> session
+  session --> model
+  session -->|"tool call"| tools
+  session -->|"events"| appServer

@@ -1,0 +1,12 @@
+flowchart TD
+  user["User Prompt"] --> core["Codex Core Turn"]
+
+  subgraph turn [Single Turn]
+    core --> infer["Model Inference"]
+    infer --> decision{"Tool needed?"}
+    decision -->|"yes"| exec["Execute Tool"]
+    decision -->|"no"| reply["Assistant Message"]
+    exec --> infer
+  end
+
+  reply --> user
