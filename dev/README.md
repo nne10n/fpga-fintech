@@ -9,3 +9,5 @@ RTL、仿真、FPGA 网络处理相关代码放这里。
 | 通信基建 | [`fpga-comm-infra/`](fpga-comm-infra/) |
 
 不含 `.venv`、`.local`、`sim_build` 等本地工具链与仿真产物。
+
+- `pegasus_fpga/` — Pegasus P16 拓扑 RTL/TB/golden（配套 research/pegasus_fpga）
