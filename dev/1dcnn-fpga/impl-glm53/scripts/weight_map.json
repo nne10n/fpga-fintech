@@ -1,0 +1,80 @@
+{
+  "version": "1.0",
+  "dtype": "int16",
+  "endian": "little",
+  "addr_unit": "int16_word",
+  "layout_note": "Phase1 microarch §5.2; linear address, little-endian INT16 words",
+  "layers": [
+    {
+      "name": "conv1",
+      "type": "conv1d",
+      "cin": 1, "cout": 16, "k": 16, "stride": 4,
+      "rin": 2048, "rout": 512, "pad_left": 6, "pad_right": 6,
+      "relu": true,
+      "sections": [
+        {"name": "weights", "shape": [16, 1, 16], "words": 256},
+        {"name": "bias", "shape": [16], "words": 16, "note": "INT16, sign-extended to INT32 at MAC init"},
+        {"name": "scale_mult", "shape": [16], "words": 16},
+        {"name": "scale_shift", "shape": [16], "words": 16, "dtype": "uint16"}
+      ]
+    },
+    {
+      "name": "conv2",
+      "type": "conv1d",
+      "cin": 16, "cout": 32, "k": 8, "stride": 4,
+      "rin": 512, "rout": 127, "pad_left": 0, "pad_right": 0,
+      "relu": true,
+      "sections": [
+        {"name": "weights", "shape": [32, 16, 8], "words": 4096},
+        {"name": "bias", "shape": [32], "words": 32},
+        {"name": "scale_mult", "shape": [32], "words": 32},
+        {"name": "scale_shift", "shape": [32], "words": 32, "dtype": "uint16"}
+      ]
+    },
+    {
+      "name": "pool",
+      "type": "maxpool1d",
+      "k": 2, "stride": 2,
+      "rin": 127, "rout": 63,
+      "sections": []
+    },
+    {
+      "name": "conv3",
+      "type": "conv1d",
+      "cin": 32, "cout": 64, "k": 3, "stride": 1,
+      "rin": 63, "rout": 61, "pad_left": 0, "pad_right": 0,
+      "relu": true,
+      "sections": [
+        {"name": "weights", "shape": [64, 32, 3], "words": 6144},
+        {"name": "bias", "shape": [64], "words": 64},
+        {"name": "scale_mult", "shape": [64], "words": 64},
+        {"name": "scale_shift", "shape": [64], "words": 64, "dtype": "uint16"}
+      ]
+    },
+    {
+      "name": "gap",
+      "type": "gap",
+      "rin": 61, "rout": 64, "channels": 64,
+      "sections": [
+        {"name": "recip_mult", "shape": [1], "words": 1},
+        {"name": "recip_shift", "shape": [1], "words": 1, "dtype": "uint16"}
+      ],
+      "note": "avg = (sum * recip_mult) >> recip_shift; length=61"
+    },
+    {
+      "name": "fc",
+      "type": "fc",
+      "cin": 64, "cout": 10,
+      "relu": false,
+      "sections": [
+        {"name": "weights", "shape": [10, 64], "words": 640},
+        {"name": "bias", "shape": [10], "words": 10},
+        {"name": "scale_mult", "shape": [10], "words": 10},
+        {"name": "scale_shift", "shape": [10], "words": 10, "dtype": "uint16"}
+      ]
+    }
+  ],
+  "total_words_expected": 11504,
+  "bank": "bank0_only",
+  "feat_hotswap": 0
+}

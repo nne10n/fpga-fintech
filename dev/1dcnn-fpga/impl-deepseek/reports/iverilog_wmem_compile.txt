@@ -1,0 +1,3 @@
+rtl/score_path.sv:36: error: This assignment requires an explicit cast.
+rtl/score_path.sv:38: error: This assignment requires an explicit cast.
+2 error(s) during elaboration.

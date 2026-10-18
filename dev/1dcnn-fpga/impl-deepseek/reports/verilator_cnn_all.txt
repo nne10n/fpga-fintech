@@ -1,0 +1,326 @@
+loaded 11504 ok=1
+v00 fires=2048 feat0[0]=0 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=0 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=81 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=81 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=81 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=81 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v01 fires=2048 feat0[0]=1 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=32220 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=314 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=314 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=314 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=314 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v02 fires=2048 feat0[0]=-1 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=32227 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v03 fires=2048 feat0[0]=32767 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=32219 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v04 fires=2048 feat0[0]=-32768 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=1073 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v05 fires=2048 feat0[0]=0 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=32219 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=1761 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=1761 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=1761 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=1761 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v06 fires=2048 feat0[0]=1 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=2684 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=89 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=89 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=89 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=89 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v07 fires=2048 feat0[0]=0 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=32222 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v08 fires=2048 feat0[0]=0 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=19331 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v09 fires=2048 feat0[0]=-272 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27386 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v10 fires=2048 feat0[0]=1323 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27923 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v11 fires=2048 feat0[0]=4315 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=29534 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v12 fires=2048 feat0[0]=2572 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27923 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=0 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=0 score0=0 cyc=3002049
+v13 fires=2048 feat0[0]=1616 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=28460 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v14 fires=2048 feat0[0]=-2197 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27386 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v15 fires=2048 feat0[0]=-2561 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27386 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v16 fires=2048 feat0[0]=3167 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=30608 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v17 fires=2048 feat0[0]=-1122 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27386 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v18 fires=2048 feat0[0]=-2923 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=26312 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v19 fires=2048 feat0[0]=-138 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=28997 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v20 fires=2048 feat0[0]=3599 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27923 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v21 fires=2048 feat0[0]=-1098 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=30071 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v22 fires=2048 feat0[0]=-4144 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=26312 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v23 fires=2048 feat0[0]=4801 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=28997 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v24 fires=2048 feat0[0]=2855 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=30608 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v25 fires=2048 feat0[0]=-3617 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=28460 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v26 fires=2048 feat0[0]=654 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=29534 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v27 fires=2048 feat0[0]=1981 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=29158 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v28 fires=2048 feat0[0]=1154 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=27923 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v29 fires=2048 feat0[0]=4532 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=30608 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v30 fires=2048 feat0[0]=-2771 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=31145 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32554 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32554 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32554 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32554 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v31 fires=2048 feat0[0]=-1094 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=28997 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v32 fires=2048 feat0[0]=52 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=30071 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=0 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=0 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=0 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=0 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v33 fires=2048 feat0[0]=740 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=31145 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v34 fires=2048 feat0[0]=-1542 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=28997 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v35 fires=2048 feat0[0]=-3281 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=26319 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=32767 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=32767 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=32767 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v00 PASS cyc=3421532
+v01 PASS cyc=3421532
+v02 PASS cyc=3421532
+v03 PASS cyc=3421532
+v04 PASS cyc=3421532
+v05 PASS cyc=3421532
+v06 PASS cyc=3421532
+v07 FAIL got=-32768,32767,-32768,-32768,32767,32767,32767,-32768,-32768,-32768 gold=-32768,32767,-32768,-32768,32767,32767,32767,-32768,-32768,32767 cyc=3421532 score0_reg=-32768
+v08 PASS cyc=3421532
+v09 FAIL got=-32768,32767,32767,-32768,32767,-32768,32767,-32768,-32768,-32768 gold=-32768,32767,32767,-32768,32767,-32768,32767,-32768,-32768,32767 cyc=3421532 score0_reg=-32768
+v10 PASS cyc=3421532
+v11 PASS cyc=3421532
+v12 PASS cyc=3421532
+v13 PASS cyc=3421532
+v14 PASS cyc=3421532
+v15 PASS cyc=3421532
+v16 PASS cyc=3421532
+v17 PASS cyc=3421532
+v18 PASS cyc=3421532
+v19 PASS cyc=3421532
+v20 FAIL got=-32768,32767,32767,-32768,32767,-32768,32767,-32768,-32768,-32768 gold=-32768,32767,32767,-32768,32767,32767,32767,-32768,-32768,-32768 cyc=3421532 score0_reg=-32768
+v21 PASS cyc=3421532
+v22 FAIL got=-32768,32767,32767,-32768,32767,-32768,32767,-32768,-32768,-32768 gold=-32768,32767,32767,-32768,32767,-32768,32767,-32768,-32768,32767 cyc=3421532 score0_reg=-32768
+v23 PASS cyc=3421532
+v24 PASS cyc=3421532
+v25 PASS cyc=3421532
+v26 FAIL got=-32768,32767,32767,-32768,32767,-32768,32767,-32768,-32768,-32768 gold=-32768,32767,32767,-32768,32767,32767,32767,-32768,-32768,-32768 cyc=3421532 score0_reg=-32768
+v27 PASS cyc=3421532
+v28 PASS cyc=3421532
+v29 PASS cyc=3421532
+v30 PASS cyc=3421532
+v31 PASS cyc=3421532
+v32 PASS cyc=3421532
+v33 PASS cyc=3421532
+v34 PASS cyc=3421532
+v35 PASS cyc=3421532
+SUMMARY pass=31 fail=5

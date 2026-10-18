@@ -1,0 +1,5 @@
+PASS weight_ok
+PASS weight_rd
+PASS done_pulse
+TB_WMEM_SCORE PASS
+tb/tb_wmem_score.sv:77: $finish called at 115315000 (1ps)

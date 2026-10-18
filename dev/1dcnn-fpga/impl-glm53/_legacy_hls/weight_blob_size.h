@@ -1,0 +1,3 @@
+#pragma once
+#define WEIGHT_BLOB_WORDS 11504
+#define WEIGHT_BLOB_BYTES 23008

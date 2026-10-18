@@ -1,0 +1,226 @@
+{
+  "seed_weights": 42,
+  "seed_vectors": 20261017,
+  "weight_blob": "weights_synthetic.bin",
+  "weight_map": "weight_map.json",
+  "note": "Synthetic weights; training export replaceable via weight_map.json layout.",
+  "n_cases": 36,
+  "cases": [
+    {
+      "id": "v00",
+      "kind": "all_zero",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v01",
+      "kind": "all_plus1",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v02",
+      "kind": "all_minus1",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v03",
+      "kind": "saturate_pos",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v04",
+      "kind": "saturate_neg",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v05",
+      "kind": "ramp",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v06",
+      "kind": "alt_pm",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v07",
+      "kind": "realistic_sine50",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v08",
+      "kind": "realistic_sine120",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v09",
+      "kind": "realistic_noise_burst",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v10",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v11",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v12",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v13",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v14",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v15",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v16",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v17",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v18",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v19",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v20",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v21",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v22",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v23",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v24",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v25",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v26",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v27",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v28",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v29",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v30",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v31",
+      "kind": "random",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v32",
+      "kind": "random_scaled",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v33",
+      "kind": "random_scaled",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v34",
+      "kind": "random_scaled",
+      "win_len": 2048,
+      "n_class": 10
+    },
+    {
+      "id": "v35",
+      "kind": "random_scaled",
+      "win_len": 2048,
+      "n_class": 10
+    }
+  ]
+}

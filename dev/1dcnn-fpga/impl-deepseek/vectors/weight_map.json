@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "endian": "little",
+  "word_bits": 16,
+  "total_words": 11504,
+  "total_bytes": 23008,
+  "network": {
+    "conv1": {
+      "cout": 16,
+      "cin": 1,
+      "k": 16,
+      "rin": 2048,
+      "rout": 512,
+      "stride": 4,
+      "pad_total": 12
+    },
+    "conv2": {
+      "cout": 32,
+      "cin": 16,
+      "k": 8,
+      "rin": 512,
+      "rout": 127,
+      "stride": 4,
+      "pad_total": 0
+    },
+    "pool": {
+      "k": 2,
+      "stride": 2,
+      "rin": 127,
+      "rout": 63
+    },
+    "conv3": {
+      "cout": 64,
+      "cin": 32,
+      "k": 3,
+      "rin": 63,
+      "rout": 61,
+      "stride": 1,
+      "pad_total": 0
+    },
+    "gap": {
+      "rin": 61,
+      "rout": 64
+    },
+    "fc": {
+      "cout": 10,
+      "cin": 64
+    }
+  },
+  "quant_order": "MAC -> (acc*scale_mult)>>scale_shift -> saturate_int16 -> ReLU",
+  "regions": [
+    {
+      "name": "conv1_w",
+      "offset_words": 0,
+      "nwords": 256,
+      "dtype": "int16",
+      "shape": [
+        16,
+        1,
+        16
+      ]
+    },
+    {
+      "name": "conv1_bias",
+      "offset_words": 256,
+      "nwords": 16,
+      "dtype": "int16",
+      "shape": [
+        16
+      ]
+    },
+    {
+      "name": "conv1_scale_mult",
+      "offset_words": 272,
+      "nwords": 16,
+      "dtype": "int16",
+      "shape": [
+        16
+      ]
+    },
+    {
+      "name": "conv1_scale_shift",
+      "offset_words": 288,
+      "nwords": 16,
+      "dtype": "uint16",
+      "shape": [
+        16
+      ]
+    },
+    {
+      "name": "conv2_w",
+      "offset_words": 304,
+      "nwords": 4096,
+      "dtype": "int16",
+      "shape": [
+        32,
+        16,
+        8
+      ]
+    },
+    {
+      "name": "conv2_bias",
+      "offset_words": 4400,
+      "nwords": 32,
+      "dtype": "int16",
+      "shape": [
+        32
+      ]
+    },
+    {
+      "name": "conv2_scale_mult",
+      "offset_words": 4432,
+      "nwords": 32,
+      "dtype": "int16",
+      "shape": [
+        32
+      ]
+    },
+    {
+      "name": "conv2_scale_shift",
+      "offset_words": 4464,
+      "nwords": 32,
+      "dtype": "uint16",
+      "shape": [
+        32
+      ]
+    },
+    {
+      "name": "conv3_w",
+      "offset_words": 4496,
+      "nwords": 6144,
+      "dtype": "int16",
+      "shape": [
+        64,
+        32,
+        3
+      ]
+    },
+    {
+      "name": "conv3_bias",
+      "offset_words": 10640,
+      "nwords": 64,
+      "dtype": "int16",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "name": "conv3_scale_mult",
+      "offset_words": 10704,
+      "nwords": 64,
+      "dtype": "int16",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "name": "conv3_scale_shift",
+      "offset_words": 10768,
+      "nwords": 64,
+      "dtype": "uint16",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "name": "gap_recip_shift",
+      "offset_words": 10832,
+      "nwords": 1,
+      "dtype": "uint16",
+      "shape": [
+        1
+      ]
+    },
+    {
+      "name": "gap_recip_mult",
+      "offset_words": 10833,
+      "nwords": 1,
+      "dtype": "int16",
+      "shape": [
+        1
+      ]
+    },
+    {
+      "name": "fc_w",
+      "offset_words": 10834,
+      "nwords": 640,
+      "dtype": "int16",
+      "shape": [
+        10,
+        64
+      ]
+    },
+    {
+      "name": "fc_bias",
+      "offset_words": 11474,
+      "nwords": 10,
+      "dtype": "int16",
+      "shape": [
+        10
+      ]
+    },
+    {
+      "name": "fc_scale_mult",
+      "offset_words": 11484,
+      "nwords": 10,
+      "dtype": "int16",
+      "shape": [
+        10
+      ]
+    },
+    {
+      "name": "fc_scale_shift",
+      "offset_words": 11494,
+      "nwords": 10,
+      "dtype": "uint16",
+      "shape": [
+        10
+      ]
+    }
+  ],
+  "note": "Synthetic training export placeholder; replace blob via same layout."
+}

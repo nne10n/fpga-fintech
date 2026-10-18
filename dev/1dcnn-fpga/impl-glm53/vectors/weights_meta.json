@@ -1,0 +1,111 @@
+{
+  "seed": 499122433,
+  "total_words": 11504,
+  "bytes": 23008,
+  "sha256": "4152d05dd0db1304fea32e796b783c385fc45eddba4ecbe17c666ea84f2c15f2",
+  "offsets": {
+    "conv1": {
+      "base": 0,
+      "sections": {
+        "weights": {
+          "offset": 0,
+          "words": 256
+        },
+        "bias": {
+          "offset": 256,
+          "words": 16
+        },
+        "scale_mult": {
+          "offset": 272,
+          "words": 16
+        },
+        "scale_shift": {
+          "offset": 288,
+          "words": 16
+        }
+      }
+    },
+    "conv2": {
+      "base": 304,
+      "sections": {
+        "weights": {
+          "offset": 304,
+          "words": 4096
+        },
+        "bias": {
+          "offset": 4400,
+          "words": 32
+        },
+        "scale_mult": {
+          "offset": 4432,
+          "words": 32
+        },
+        "scale_shift": {
+          "offset": 4464,
+          "words": 32
+        }
+      }
+    },
+    "pool": {
+      "base": 4496,
+      "sections": {}
+    },
+    "conv3": {
+      "base": 4496,
+      "sections": {
+        "weights": {
+          "offset": 4496,
+          "words": 6144
+        },
+        "bias": {
+          "offset": 10640,
+          "words": 64
+        },
+        "scale_mult": {
+          "offset": 10704,
+          "words": 64
+        },
+        "scale_shift": {
+          "offset": 10768,
+          "words": 64
+        }
+      }
+    },
+    "gap": {
+      "base": 10832,
+      "sections": {
+        "recip_mult": {
+          "offset": 10832,
+          "words": 1
+        },
+        "recip_shift": {
+          "offset": 10833,
+          "words": 1
+        }
+      }
+    },
+    "fc": {
+      "base": 10834,
+      "sections": {
+        "weights": {
+          "offset": 10834,
+          "words": 640
+        },
+        "bias": {
+          "offset": 11474,
+          "words": 10
+        },
+        "scale_mult": {
+          "offset": 11484,
+          "words": 10
+        },
+        "scale_shift": {
+          "offset": 11494,
+          "words": 10
+        }
+      }
+    }
+  },
+  "feat_hotswap": 0,
+  "map": "scripts/weight_map.json"
+}

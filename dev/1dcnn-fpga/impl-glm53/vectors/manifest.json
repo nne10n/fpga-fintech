@@ -1,0 +1,165 @@
+{
+  "count": 32,
+  "cases": [
+    {
+      "id": "v00_allzero",
+      "file": "v00_allzero.bin",
+      "len": 2048
+    },
+    {
+      "id": "v01_allplus1",
+      "file": "v01_allplus1.bin",
+      "len": 2048
+    },
+    {
+      "id": "v02_allminus1",
+      "file": "v02_allminus1.bin",
+      "len": 2048
+    },
+    {
+      "id": "v03_sat_pos",
+      "file": "v03_sat_pos.bin",
+      "len": 2048
+    },
+    {
+      "id": "v04_sat_neg",
+      "file": "v04_sat_neg.bin",
+      "len": 2048
+    },
+    {
+      "id": "v05_ramp",
+      "file": "v05_ramp.bin",
+      "len": 2048
+    },
+    {
+      "id": "v06_alt",
+      "file": "v06_alt.bin",
+      "len": 2048
+    },
+    {
+      "id": "v07_impulse",
+      "file": "v07_impulse.bin",
+      "len": 2048
+    },
+    {
+      "id": "v08_rand",
+      "file": "v08_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v09_rand",
+      "file": "v09_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v10_rand",
+      "file": "v10_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v11_rand",
+      "file": "v11_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v12_rand",
+      "file": "v12_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v13_rand",
+      "file": "v13_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v14_rand",
+      "file": "v14_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v15_rand",
+      "file": "v15_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v16_rand",
+      "file": "v16_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v17_rand",
+      "file": "v17_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v18_rand",
+      "file": "v18_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v19_rand",
+      "file": "v19_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v20_rand",
+      "file": "v20_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v21_rand",
+      "file": "v21_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v22_rand",
+      "file": "v22_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v23_rand",
+      "file": "v23_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v24_rand",
+      "file": "v24_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v25_rand",
+      "file": "v25_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v26_rand",
+      "file": "v26_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v27_rand",
+      "file": "v27_rand.bin",
+      "len": 2048
+    },
+    {
+      "id": "v28_realistic",
+      "file": "v28_realistic.bin",
+      "len": 2048
+    },
+    {
+      "id": "v29_sparse",
+      "file": "v29_sparse.bin",
+      "len": 2048
+    },
+    {
+      "id": "v30_const128",
+      "file": "v30_const128.bin",
+      "len": 2048
+    },
+    {
+      "id": "v31_const-64",
+      "file": "v31_const-64.bin",
+      "len": 2048
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+loaded 11504 ok=1
+v00 fires=2048 feat0[0]=0 cs=2 ms=0
+  spin=0 cs=2 ms=1 feat1_0=0 score0=0 cyc=2049
+  spin=500000 cs=3 ms=5 feat1_0=81 score0=0 cyc=502049
+  spin=1000000 cs=3 ms=4 feat1_0=81 score0=0 cyc=1002049
+  spin=1500000 cs=3 ms=3 feat1_0=81 score0=0 cyc=1502049
+  spin=2000000 cs=3 ms=5 feat1_0=81 score0=0 cyc=2002049
+  spin=2500000 cs=5 ms=5 feat1_0=32767 score0=0 cyc=2502049
+  spin=3000000 cs=5 ms=4 feat1_0=32767 score0=0 cyc=3002049
+v00 PASS cyc=3421532
+SUMMARY pass=1 fail=0
